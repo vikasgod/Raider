@@ -4,11 +4,20 @@ import User from "@/models/user.model";
 import bcrypt from "bcryptjs";
 import { sendMail } from "@/lib/sendMail";
 export async function POST(req: NextRequest) {
-  // Implementation for user registration
   try {
-    const { name, email, password } = await req.json();
-    console.log("Received registration data:", { name, email, password });
-    await connectDB(); // Ensure the database is connected before proceeding
+    const body = await req.json();
+    const name = body?.name?.toString().trim();
+    const email = body?.email?.toString().trim().toLowerCase();
+    const password = body?.password?.toString();
+
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { message: "Name, email and password are required" },
+        { status: 400 },
+      );
+    }
+
+    await connectDB();
     let user = await User.findOne({ email });
     if (user && user.isEmailVerified) {
       return NextResponse.json(
@@ -16,6 +25,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -29,15 +39,15 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     if (user && !user.isEmailVerified) {
-      ((user.name = name),
-        (user.password = hashedPassword),
-        (user.email = email),
-        (user.otp = otp),
-        (user.otpExpiresAt = otpExpiresAt));
+      user.name = name;
+      user.password = hashedPassword;
+      user.email = email;
+      user.otp = otp;
+      user.otpExpiresAt = otpExpiresAt;
       await user.save();
     } else {
       user = await User.create({
-        name: name,
+        name,
         email,
         password: hashedPassword,
         otp,
@@ -50,7 +60,7 @@ export async function POST(req: NextRequest) {
       "Your OTP for Email Verification",
       `<h2>Your Email Verification OTP is <strong>${otp}</strong></h2>`,
     );
-    
+
     return NextResponse.json(
       { message: "User registered successfully" },
       { status: 201 },

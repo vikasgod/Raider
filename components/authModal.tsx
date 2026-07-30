@@ -19,7 +19,6 @@ function AuthModal({ open, onClose }: propType) {
   const [err, setErr] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const { data } = useSession();
-  console.log("data", data);
   const handleSignUp = async () => {
     setLoading(true);
     try {

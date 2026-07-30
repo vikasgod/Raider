@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   try {
     await connectDB();
     const { email, otp } = await req.json();
-    if (!email && !otp) {
+    if (!email || !otp) {
       return Response.json(
         { message: "Email and OTP required" },
         { status: 400 },

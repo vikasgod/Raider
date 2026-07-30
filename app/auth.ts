@@ -20,20 +20,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           placeholder: "*****",
         },
       },
-      authorize: async (credentials, request) => {
+      authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required");
         }
-        const { email, password } = credentials;
-        await connectDB(); // Ensure the database is connected before proceeding
+
+        const email = credentials.email.toString().trim().toLowerCase();
+        const password = credentials.password.toString();
+
+        await connectDB();
         const user = await User.findOne({ email });
+
         if (!user) {
-          throw new Error("User not found");
+          throw new Error("Invalid email or password");
         }
-        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (!user.isEmailVerified) {
+          throw new Error("Please verify your email before logging in");
+        }
+
+        const passwordMatch = await bcrypt.compare(password, user.password || "");
         if (!passwordMatch) {
-          throw new Error("Invalid password");
+          throw new Error("Invalid email or password");
         }
+
         return {
           id: user._id.toString(),
           name: user.name,
@@ -48,21 +58,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === "google") {
-        await connectDB(); // Ensure the database is connected before proceeding
-        let existingUser = await User.findOne({ email: user.email });
+        await connectDB();
+        const normalizedEmail = user.email?.toString().trim().toLowerCase();
+
+        let existingUser = await User.findOne({ email: normalizedEmail });
         if (!existingUser) {
-          await User.create({
+          existingUser = await User.create({
             name: user.name,
-            email: user.email,
-            role: "user", // Default role for Google sign-ins
+            email: normalizedEmail,
+            role: "user",
+            isEmailVerified: true,
           });
         }
-        user.id = existingUser?._id.toString() || user.id; // Ensure the user ID is set
-        user.role = existingUser?.role || "user"; // Ensure the user role is set
+
+        user.id = existingUser._id.toString();
+        user.role = existingUser.role || "user";
+        user.email = normalizedEmail;
       }
-      return true; // Allow sign-in to proceed
+      return true;
     },
     async jwt({ token, user }) {
       if(user){
@@ -90,7 +105,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge: 10 * 24 * 60 * 60, // 10 days
+    maxAge: 10 * 24 * 60 * 60,
   },
-  secret: process.env.BETTER_AUTH_SECRET,
+  trustHost: true,
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || process.env.BETTER_AUTH_SECRET,
 });
