@@ -28,7 +28,8 @@ function AuthModal({ open, onClose }: propType) {
         email,
         password,
       });
-      setStep("otp")
+      setStep("otp");
+      setErr("")
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
@@ -40,9 +41,11 @@ function AuthModal({ open, onClose }: propType) {
     try {
       const { data } = await axios.post("/api/auth/verify-email", {
         email,
-        otp:otp.join("")
+        otp: otp.join(""),
       });
-      setStep("login")
+      setOtp(["", "", "", "", "", ""])
+      setStep("login");
+      setErr("")
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
@@ -51,28 +54,34 @@ function AuthModal({ open, onClose }: propType) {
   };
   const handleLogin = async () => {
     setLoading(true);
+    setErr("");
     const res = await signIn("credentials", {
       email,
       password,
       redirect: false,
     });
+
+    if (res?.error) {
+      setErr("Invalid email or password");
+    }
+
     setLoading(false);
   };
   const handleGoogleLogin = async () => {
     await signIn("google");
   };
-  const handleChangeOtp=(index:number,value:string)=>{
-    if(!/^[0-9]?$/.test(value)) return
-    const updated =[...otp]
-    updated[index]=value
-    setOtp(updated)
-    if(value && index<otp.length-1){
-      document.getElementById(`otp-${index+1}`)?.focus()
+  const handleChangeOtp = (index: number, value: string) => {
+    if (!/^[0-9]?$/.test(value)) return;
+    const updated = [...otp];
+    updated[index] = value;
+    setOtp(updated);
+    if (value && index < otp.length - 1) {
+      document.getElementById(`otp-${index + 1}`)?.focus();
     }
-    if(!value && index>0){
-      document.getElementById(`otp-${index-1}`)?.focus()
+    if (!value && index > 0) {
+      document.getElementById(`otp-${index - 1}`)?.focus();
     }
-  }
+  };
   return (
     <AnimatePresence>
       {open && (
@@ -163,6 +172,7 @@ function AuthModal({ open, onClose }: propType) {
                             className="w-full bg-transparent outline-none text-sm"
                           />
                         </div>
+                        {err && <p className="text-red-500">{err}</p>}
                         <button
                           disabled={loading}
                           onClick={handleLogin}
@@ -273,30 +283,37 @@ function AuthModal({ open, onClose }: propType) {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                     >
-                      <h2 className="text-xl font-semibold">Verify Email otp</h2>
+                      <h2 className="text-xl font-semibold">
+                        Verify Email otp
+                      </h2>
                       <div className="mt-6 flex justify-between gap-2">
-                        {otp.map((v,i)=>(
-                          <input key={i} id={`otp-${i}`}
-                          value={v}
-                          maxLength={1}
-                          className="w-10 h-12 sm:w-12 text-center text-lg font-semibold rounded-xl bg-white border border-black/20 outline-none"
-                          onChange={(e)=>handleChangeOtp(i,e.target.value)}
+                        {otp.map((v, i) => (
+                          <input
+                            key={i}
+                            id={`otp-${i}`}
+                            value={v}
+                            maxLength={1}
+                            className="w-10 h-12 sm:w-12 text-center text-lg font-semibold rounded-xl bg-white border border-black/20 outline-none"
+                            onChange={(e) => handleChangeOtp(i, e.target.value)}
                           />
                         ))}
                       </div>
-                        {err && <p className="text-red-500">{err}</p>}
-                      <button disabled={loading} onClick={handleVerifyEmail} 
-                      className="mt-6 w-full h-11 flex items-center justify-center rounded-xl bg-black text-white font-semibold hover:bg-gray-900 transition">
+                      {err && <p className="text-red-500">{err}</p>}
+                      <button
+                        disabled={loading}
+                        onClick={handleVerifyEmail}
+                        className="mt-6 w-full h-11 flex items-center justify-center rounded-xl bg-black text-white font-semibold hover:bg-gray-900 transition"
+                      >
                         {!loading ? (
-                            `Verify and create Account`
-                          ) : (
-                            <CircleDashed
-                              size={18}
-                              color="white"
-                              className="animate-screen"
-                            />
-                          )}
-                        </button>
+                          `Verify and create Account`
+                        ) : (
+                          <CircleDashed
+                            size={18}
+                            color="white"
+                            className="animate-screen"
+                          />
+                        )}
+                      </button>
                     </motion.div>
                   )}
                 </div>
