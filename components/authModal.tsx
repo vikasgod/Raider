@@ -19,6 +19,7 @@ function AuthModal({ open, onClose }: propType) {
   const [err, setErr] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const { data } = useSession();
+  console.log("094560596", data);
   const handleSignUp = async () => {
     setLoading(true);
     try {
@@ -28,7 +29,7 @@ function AuthModal({ open, onClose }: propType) {
         password,
       });
       setStep("otp");
-      setErr("")
+      setErr("");
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
@@ -42,9 +43,9 @@ function AuthModal({ open, onClose }: propType) {
         email,
         otp: otp.join(""),
       });
-      setOtp(["", "", "", "", "", ""])
+      setOtp(["", "", "", "", "", ""]);
       setStep("login");
-      setErr("")
+      setErr("");
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
@@ -188,7 +189,7 @@ function AuthModal({ open, onClose }: propType) {
                           )}
                         </button>
                       </div>
-                      <p className="mt-6 text-center text-sm text-gray-500">
+                      <span className="mt-6 text-center text-sm text-gray-500">
                         Don't have a account?{" "}
                         <div
                           onClick={() => setStep("signup")}
@@ -196,7 +197,7 @@ function AuthModal({ open, onClose }: propType) {
                         >
                           Sign Up
                         </div>
-                      </p>
+                      </span>
                     </motion.div>
                   )}
                   {step == "signup" && (
