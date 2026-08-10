@@ -1,11 +1,52 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileCheck, UploadCloud } from "lucide-react";
+import { ArrowLeft, CircleDashed, FileCheck, UploadCloud } from "lucide-react";
+import axios from "axios";
 
+type docsType = "aadhar" | "license" | "rc";
 function page() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [docs, setDocs] = useState<Record<docsType, File | null>>({
+    aadhar: null,
+    license: null,
+    rc: null,
+  });
+  const handleImage = (doc: docsType, file: File | null) => {
+    if (!file) {
+      return;
+    }
+    setDocs((prev) => ({ ...prev, [doc]: file }));
+  };
+
+  const handleDocs = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      if (!docs.aadhar || !docs.license || !docs.rc) {
+          setError("all documents are required")
+          setLoading(false)
+          return null
+      }
+      formData.append("aadhar", docs?.aadhar);
+      formData.append("license", docs?.license);
+      formData.append("rc", docs?.rc);
+
+      const { data } = await axios.post(
+        "/api/partner/onboarding/documents",
+        formData,
+      );
+      setLoading(false);
+    } catch (error: any) {
+      setError(error.response.data.message ?? "something went wrong");
+      setLoading(false);
+      console.log("1", error);
+    }
+  };
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <motion.div
@@ -40,6 +81,14 @@ function page() {
                 <UploadCloud size={18} />
               </div>
             </div>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              hidden
+              onChange={(e) =>
+                handleImage("aadhar", e.target?.files?.[0] || null)
+              }
+            />
           </motion.label>
           <motion.label
             whileHover={{ scale: 1.02 }}
@@ -55,6 +104,14 @@ function page() {
                 <UploadCloud size={18} />
               </div>
             </div>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              hidden
+              onChange={(e) =>
+                handleImage("license", e.target?.files?.[0] || null)
+              }
+            />
           </motion.label>
           <motion.label
             whileHover={{ scale: 1.02 }}
@@ -70,6 +127,12 @@ function page() {
                 <UploadCloud size={18} />
               </div>
             </div>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              hidden
+              onChange={(e) => handleImage("rc", e.target?.files?.[0] || null)}
+            />
           </motion.label>
         </div>
         <div className="mt-6 flex items-start gap-3 text-xs text-gray-500">
@@ -78,12 +141,20 @@ function page() {
             Documents are securely stored and manually verified by our team.
           </p>
         </div>
+        {error && <p className="text-red-500">*{error}</p>}
+
         <motion.button
+          disabled={loading}
+          onClick={handleDocs}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           className="mt-8 w-full h-14 rounded-2xl bg-black text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-40 transition"
         >
-          Continue
+          {loading ? (
+            <CircleDashed className="text-white animate-spin" />
+          ) : (
+            "Continue"
+          )}
         </motion.button>
       </motion.div>
     </div>

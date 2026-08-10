@@ -1,7 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, Bike, Car, Package, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  Bike,
+  Car,
+  CircleDashed,
+  Package,
+  Truck,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
@@ -17,18 +24,39 @@ function page() {
   const [vehicleType, setVehicleType] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const handleVehicle = async () => {
+    setError("");
     try {
+      setLoading(true);
       const { data } = await axios.post("/api/partner/onboarding/vehicle", {
         type: vehicleType,
         number: vehicleNumber,
         vehicleModel,
       });
-      console.log("8854,", data);
-    } catch (error) {
-      console.log("first,", error);
+      if (data.status != 200) {
+        setError(data.message);
+      }
+      setLoading(false);
+    } catch (error: any) {
+      setError(error?.response.data.message ?? "somthing went wrong");
+      setLoading(false);
     }
   };
+  useEffect(() => {
+    const handleGetVehicle = async () => {
+      try {
+        const { data } = await axios.get("/api/partner/onboarding/vehicle");
+        setVehicleType(data.type);
+        setVehicleModel(data.vehicleModel);
+        setVehicleNumber(data.number);
+      } catch (error: any) {
+        console.log("eror", error);
+      }
+    };
+    handleGetVehicle();
+  }, []);
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <motion.div
@@ -93,7 +121,9 @@ function page() {
             <input
               type="text"
               value={vehicleNumber}
-              onChange={(e) => setVehicleNumber(e.target.value.toLocaleUpperCase())}
+              onChange={(e) =>
+                setVehicleNumber(e.target.value.toLocaleUpperCase())
+              }
               id="vn"
               className="mt-2 w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-black transition"
               placeholder="MH123MT243"
@@ -113,13 +143,19 @@ function page() {
             />
           </div>
         </div>
+        {error && <p className="text-red-500">*{error}</p>}
         <motion.button
+          disabled={loading}
           onClick={handleVehicle}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           className="mt-8 w-full h-14 rounded-2xl bg-black text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-40 transition"
         >
-          Continue
+          {loading ? (
+            <CircleDashed className="text-white animate-spin" />
+          ) : (
+            "Continue"
+          )}
         </motion.button>
       </motion.div>
     </div>
