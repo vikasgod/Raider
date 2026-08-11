@@ -5,6 +5,40 @@ import PartnerDocs from "@/models/partnerDocs.model";
 import User from "@/models/user.model";
 import { NextRequest } from "next/server";
 
+export async function GET(req: NextRequest) {
+    try {
+        await connectDB();
+        const session = await auth();
+        if (!session || !session.user?.email) {
+            return Response.json({ message: "unauthorized" }, { status: 401 });
+        }
+
+        const user = await User.findOne({ email: session.user.email });
+        if (!user) {
+            return Response.json({ message: "User not found" }, { status: 400 });
+        }
+
+        const partnerDocs = await PartnerDocs.findOne({ owner: user._id }).lean();
+        if (!partnerDocs) {
+            return Response.json({ message: "Documents not found" }, { status: 404 });
+        }
+
+        return Response.json(
+            {
+                aadharUrl: partnerDocs.aadharUrl ?? null,
+                licenseUrl: partnerDocs.licenseUrl ?? null,
+                rcUrl: partnerDocs.rcUrl ?? null,
+            },
+            { status: 200 }
+        );
+    } catch (error) {
+        return Response.json(
+            { message: `get partner docs error ${error}` },
+            { status: 500 }
+        );
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         await connectDB();

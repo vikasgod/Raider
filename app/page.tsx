@@ -5,15 +5,19 @@ import Image from "next/image";
 import { auth } from "./auth";
 import PartnerDashboard from "@/components/partnerDashboard";
 import AdminDashboard from "@/components/adminDashboard";
+import connectDB from "@/lib/db";
+import User from "@/models/user.model";
 
 export default async function Home() {
   const session = await auth();
+  await connectDB();
+  const user = await User.findOne({ email: session?.user?.email });
   return (
     <div className="w-full min-h-screen bg-white">
       <Nav />
-      {session?.user?.role == "partner" ? (
+      {user?.role == "partner" ? (
         <PartnerDashboard />
-      ) : session?.user?.role == "admin" ? (
+      ) : user?.role == "admin" ? (
         <AdminDashboard />
       ) : (
         <PublicHome />

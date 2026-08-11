@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -25,12 +25,18 @@ function Page() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const sanitizedIFSC = bankForm.ifsc.trim().toUpperCase();
 
-  const isNameValid = bankForm.accountHolder.trim().length >= 3;
-  const isAccountValid = bankForm.accountNumber.trim().length >= 9;
+  const sanitizedIFSC = String(bankForm.ifsc ?? "")
+    .trim()
+    .toUpperCase();
+  const accountHolder = String(bankForm.accountHolder ?? "");
+  const accountNumber = String(bankForm.accountNumber ?? "");
+  const mobileNumber = String(bankForm.mobileNumber ?? "");
+
+  const isNameValid = accountHolder.trim().length >= 3;
+  const isAccountValid = accountNumber.trim().length >= 9;
   const isIfscValid = IFSC_REGEX.test(sanitizedIFSC);
-  const isMobileValid = /^\d{10}$/.test(bankForm.mobileNumber.trim());
+  const isMobileValid = /^\d{10}$/.test(mobileNumber.trim());
 
   const canSubmit =
     isNameValid && isAccountValid && isMobileValid && isIfscValid;
@@ -54,7 +60,6 @@ function Page() {
       });
 
       console.log("bank response", data);
-      router.push("/partner/onboarding/documents");
     } catch (err: any) {
       const message =
         err?.response?.data?.message || err?.message || "Something went wrong";
@@ -64,6 +69,26 @@ function Page() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        const { data } = await axios.get("/api/partner/onboarding/bank");
+        console.log("35463", data);
+        setBankForm({
+          accountHolder: data?.partnerBank?.accountHolder ?? "",
+          accountNumber: data?.partnerBank?.accountNumber ?? "",
+          ifsc: data?.partnerBank?.ifsc ?? "",
+          upi: data?.partnerBank?.upi ?? "",
+          mobileNumber: data?.mobileNumber ?? "",
+        });
+      } catch (fetchError: any) {
+        console.log("documents fetch error", fetchError);
+      }
+    };
+
+    fetchDocs();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
