@@ -19,7 +19,6 @@ function AuthModal({ open, onClose }: propType) {
   const [err, setErr] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const { data } = useSession();
-  console.log("094560596", data);
   const handleSignUp = async () => {
     setLoading(true);
     try {
@@ -63,6 +62,10 @@ function AuthModal({ open, onClose }: propType) {
 
     if (res?.error) {
       setErr("Invalid email or password");
+    }
+
+    if (res?.ok) {
+      onClose();
     }
 
     setLoading(false);
@@ -267,12 +270,12 @@ function AuthModal({ open, onClose }: propType) {
                       </div>
                       <p className="mt-6 text-center text-sm text-gray-500">
                         Already have a account{" "}
-                        <div
+                        <span
                           onClick={() => setStep("login")}
                           className="text-black font-medium hover:underline"
                         >
                           Login
-                        </div>
+                        </span>
                       </p>
                     </motion.div>
                   )}
