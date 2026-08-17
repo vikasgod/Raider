@@ -35,6 +35,9 @@ function page() {
         number: vehicleNumber,
         vehicleModel,
       });
+      if (data.status != 200) {
+        setError(data.message);
+      }
       router.push("/partner/onboarding/documents");
 
       setLoading(false);

@@ -9,17 +9,11 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const session = await auth();
         if (!session || !session.user?.email) {
-            return Response.json({
-                message: "unauthorized",
-                status: 400,
-            });
+            return Response.json({ message: "unauthorized" }, { status: 401 });
         }
         const user = await User.findOne({ email: session.user.email });
         if (!user) {
-            return Response.json({
-                message: "User not found",
-                status: 400,
-            });
+            return Response.json({ message: "User not found" }, { status: 400 });
         }
         const { accountHolder, accountNumber, mobileNumber, upi, ifsc } = await req.json();
         if (!accountHolder || !accountNumber || !mobileNumber || !ifsc) {
@@ -35,9 +29,9 @@ export async function POST(req: NextRequest) {
         )
 
         user.mobileNumber = mobileNumber;
-        if (user.partnerOnboardingSteps < 3) {
-            user.partnerOnboardingSteps = 3
-        }
+
+        user.partnerOnboardingSteps = 3
+        user.partnerStatus = "pending";
         await user.save();
         return Response.json(
             partnerBank, {

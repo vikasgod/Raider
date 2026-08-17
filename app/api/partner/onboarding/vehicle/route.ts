@@ -11,33 +11,41 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const session = await auth();
     if (!session || !session.user?.email) {
-      return Response.json({
-        message: "unauthorized",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "unauthorized",
+        },
+        { status: 400 },
+      );
     }
 
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
-      return Response.json({
-        message: "User not found",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "User not found",
+        },
+        { status: 400 },
+      );
     }
 
     const { type, number, vehicleModel } = await req.json();
     if (!type || !number || !vehicleModel) {
-      return Response.json({
-        message: "missing required details",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "missing required details",
+        },
+        { status: 400 },
+      );
     }
 
     if (!VEHICLE_REGEX.test(String(number).toUpperCase())) {
-      return Response.json({
-        message: "Invalid Vehicle Number Format",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "Invalid Vehicle Number Format",
+        },
+        { status: 400 },
+      );
     }
 
     const vehicleNumber = String(number).toUpperCase();
@@ -49,6 +57,19 @@ export async function POST(req: NextRequest) {
       vehicle.vehicleModel = vehicleModel;
       vehicle.status = "pending";
       await vehicle.save();
+
+      if (user.partnerOnboardingSteps < 2) {
+        user.partnerOnboardingSteps = 2;
+        user.partnerStatus = "pending";
+
+        await user.save();
+      } else {
+        user.partnerOnboardingSteps = 3;
+        user.partnerStatus = "pending";
+        
+        await user.save();
+      }
+
       return Response.json(vehicle, { status: 200 });
     }
     const duplicate = await Vehicle.findOne({ number: vehicleNumber });
@@ -72,6 +93,7 @@ export async function POST(req: NextRequest) {
       user.partnerOnboardingSteps = 1;
     }
     user.role = "partner";
+    user.partnerStatus = "pending";
     await user.save();
     return Response.json(vehicle, { status: 201 });
   } catch (error) {
@@ -90,18 +112,22 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const session = await auth();
     if (!session || !session.user?.email) {
-      return Response.json({
-        message: "unauthorized",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "unauthorized",
+        },
+        { status: 400 },
+      );
     }
 
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
-      return Response.json({
-        message: "User not found",
-        status: 400,
-      });
+      return Response.json(
+        {
+          message: "User not found",
+        },
+        { status: 400 },
+      );
     }
 
     const vehicle = await Vehicle.findOne({ owner: user._id });

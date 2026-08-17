@@ -1,6 +1,6 @@
 import mongoose, { Mongoose } from "mongoose";
 
-interface IUser extends mongoose.Document {
+export interface IUser extends mongoose.Document {
   name: string;
   email: string;
   password?: string;
@@ -10,6 +10,8 @@ interface IUser extends mongoose.Document {
   otpExpiresAt?: Date;
   partnerOnboardingSteps: number;
   mobileNumber?: string;
+  partnerStatus: "pending" | "approved" | "rejected";
+  rejectionReason: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,15 @@ const userSchema = new mongoose.Schema<IUser>({
   otp: { type: String },
   partnerOnboardingSteps: { type: Number, min: 0, max: 8, default: 0 },
   mobileNumber: { type: String },
+  partnerStatus: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+    required: true,
+  },
+  rejectionReason: {
+    type: String
+  },
   otpExpiresAt: { type: Date }
 }, { timestamps: true });
 

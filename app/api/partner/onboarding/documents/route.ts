@@ -42,20 +42,27 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
+
         const session = await auth();
-        if (!session || !session.user?.email) {
-            return Response.json({
-                message: "unauthorized",
-                status: 400,
-            });
+
+        if (!session?.user?.email) {
+            return Response.json(
+                { message: "Unauthorized" },
+                { status: 401 }
+            );
         }
-        const user = await User.findOne({ email: session.user.email });
+
+        const user = await User.findOne({
+            email: session.user.email,
+        });
+
         if (!user) {
-            return Response.json({
-                message: "User not found",
-                status: 400,
-            });
+            return Response.json(
+                { message: "User not found" },
+                { status: 404 }
+            );
         }
+
         const formData = await req.formData();
         const aadhar = formData.get("aadhar") as Blob | null
         const license = formData.get("license") as Blob | null
@@ -103,7 +110,10 @@ export async function POST(req: NextRequest) {
         const partnerDocs = await PartnerDocs.findOneAndUpdate({ owner: user._id }, { $set: updatePayload }, { upsert: true, new: true })
         if (user.partnerOnboadingSteps < 2) {
             user.partnerOnboadingSteps = 2
+        } else {
+            user.partnerOnboardingSteps = 3
         }
+        user.partnerStatus = "pending";
         await user.save();
         return Response.json(
             { partnerDocs },

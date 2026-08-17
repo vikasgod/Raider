@@ -9,10 +9,9 @@ export async function GET(req: NextRequest) {
         await connectDB()
         const session = await auth();
         if (!session || !session.user?.email || session.user.role != "admin") {
-            return Response.json({
-                message: "unauthorized",
-                status: 400,
-            });
+            return Response.json(
+                { message: "unauthorized" }, { status: 400 }
+            );
         }
         const totalPartner = await User.countDocuments({ role: "partner" })
         const totalApprovedPartner = await User.countDocuments({ role: "partner", partnerStatus: "approved" })
@@ -22,7 +21,7 @@ export async function GET(req: NextRequest) {
         const pendingPartnerUsers = await User.find({
             role: "partner",
             partnerStatus: "pending",
-            partnerOnboardingSteps: 3
+            partnerOnboardingSteps: { $gte: 3 }
         })
         console.log("pendingPartnerUsers", pendingPartnerUsers)
         const partnerIds = pendingPartnerUsers.map((p) => p._id)
@@ -43,10 +42,12 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(
             {
-                totalPartner,
-                totalApprovedPartner,
-                totalPendingPartner,
-                totalRejectedPartner,
+                stats: {
+                    totalPartner,
+                    totalApprovedPartner,
+                    totalPendingPartner,
+                    totalRejectedPartner,
+                },
                 pendingPartnerReviews
             },
             { status: 200 }
