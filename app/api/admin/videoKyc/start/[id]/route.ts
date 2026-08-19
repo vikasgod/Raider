@@ -3,13 +3,13 @@ import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 import { NextRequest } from "next/server";
 
-export async function POST(
+export async function GET(
     req: NextRequest,
-    context: { params: Promise<{ id: string }> }) {
+    context: { params: Promise<{ id: string }> }
+) {
     try {
         await connectDB()
         const session = await auth();
-        const { rejectionReason } = await req.json()
         if (!session || !session.user?.email || session.user.role != "admin") {
             return Response.json(
                 { message: "unauthorized" }, { status: 400 }
@@ -25,18 +25,18 @@ export async function POST(
             )
         }
 
-        partner.partnerStatus = "rejected"
-        partner.rejectionReason = rejectionReason;
-        partner.partnerOnboardingSteps = 4;
-        await partner.save()
+        const roomId = `kyc-${partner._id}-${Date.now()}`;
+        partner.videoKycRoomId = roomId
+        partner.videoKycStatus = "in_progress"
+        partner.partnerOnboardingSteps = 4
 
+        await partner.save()
         return Response.json(
-            { message: "Partner rejected successfully" },
-            { status: 200 }
+            { roomId }
         )
     } catch (error) {
         return Response.json(
-            { message: `Partner rejected error ${error}` },
+            { message: `Videokyc start error ${error}` },
             { status: 500 }
         )
     }

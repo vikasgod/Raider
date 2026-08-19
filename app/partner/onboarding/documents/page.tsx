@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CircleDashed, FileCheck, UploadCloud } from "lucide-react";
 import axios from "axios";
 
-type docsType = "aadhar" | "license" | "rc";
+type DocsType = "aadhar" | "license" | "rc";
+type PreviewType = "image" | "pdf";
 
-const DOCS_COPY: Record<docsType, { title: string; subtitle: string }> = {
+const DOCS_COPY: Record<DocsType, { title: string; subtitle: string }> = {
   aadhar: {
     title: "Aadhar / ID Proof",
     subtitle: "Government issued ID",
@@ -22,40 +23,46 @@ const DOCS_COPY: Record<docsType, { title: string; subtitle: string }> = {
   },
 };
 
-const DOC_KEYS = Object.keys(DOCS_COPY) as docsType[];
-const EMPTY_DOCS_STATE: Record<docsType, File | null> = {
+const DOC_KEYS: DocsType[] = ["aadhar", "license", "rc"];
+const EMPTY_DOCS_STATE: Record<DocsType, File | null> = {
   aadhar: null,
   license: null,
   rc: null,
 };
-const EMPTY_URLS_STATE: Record<docsType, string | null> = {
+const EMPTY_URLS_STATE: Record<DocsType, string | null> = {
+  aadhar: null,
+  license: null,
+  rc: null,
+};
+const EMPTY_PREVIEW_TYPES: Record<DocsType, PreviewType | null> = {
   aadhar: null,
   license: null,
   rc: null,
 };
 
-function page() {
+function Page() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [fetchingDocs, setFetchingDocs] = useState(true);
   const [error, setError] = useState("");
   const [docs, setDocs] =
-    useState<Record<docsType, File | null>>(EMPTY_DOCS_STATE);
+    useState<Record<DocsType, File | null>>(EMPTY_DOCS_STATE);
   const [uploadedUrls, setUploadedUrls] =
-    useState<Record<docsType, string | null>>(EMPTY_URLS_STATE);
+    useState<Record<DocsType, string | null>>(EMPTY_URLS_STATE);
   const [selectedPreviewUrls, setSelectedPreviewUrls] =
-    useState<Record<docsType, string | null>>(EMPTY_URLS_STATE);
-  const [selectedPreviewTypes, setSelectedPreviewTypes] = useState<
-    Record<docsType, "image" | "pdf" | null>
-  >(EMPTY_URLS_STATE as Record<docsType, "image" | "pdf" | null>);
+    useState<Record<DocsType, string | null>>(EMPTY_URLS_STATE);
+  const [selectedPreviewTypes, setSelectedPreviewTypes] =
+    useState<Record<DocsType, PreviewType | null>>(EMPTY_PREVIEW_TYPES);
   const [preview, setPreview] = useState<{
     url: string;
     title: string;
-    type: "image" | "pdf";
+    type: PreviewType;
   } | null>(null);
 
   useEffect(() => {
     const fetchDocs = async () => {
       try {
+        setFetchingDocs(true);
         const { data } = await axios.get("/api/partner/onboarding/documents");
         setUploadedUrls({
           aadhar: data?.aadharUrl ?? null,
@@ -64,30 +71,51 @@ function page() {
         });
       } catch (fetchError: any) {
         if (fetchError?.response?.status !== 404) {
-          console.log("documents fetch error", fetchError);
+          console.error("Documents fetch error:", fetchError);
         }
+      } finally {
+        setFetchingDocs(false);
       }
     };
 
     fetchDocs();
   }, []);
 
-  const handleImage = (doc: docsType, file: File | null) => {
+  const handleFile = (doc: DocsType, file: File | null) => {
     if (!file) {
       return;
     }
+    setError("");
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "application/pdf",
+    ];
+    const isValidType =
+      allowedTypes.includes(file.type) ||
+      file.name.toLowerCase().endsWith(".pdf");
 
+    if (!isValidType) {
+      setError("Only JPG, PNG and PDF files are allowed.");
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError("File size must be less than 10 MB.");
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
-    const previewType =
+    const previewType: PreviewType =
       file.type === "application/pdf" ||
       file.name.toLowerCase().endsWith(".pdf")
         ? "pdf"
         : "image";
-
     setSelectedPreviewUrls((prev) => {
-      const previousPreview = prev[doc];
-      if (previousPreview) {
-        URL.revokeObjectURL(previousPreview);
+      const previousUrl = prev[doc];
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
       }
       return { ...prev, [doc]: previewUrl };
     });
@@ -103,7 +131,7 @@ function page() {
   const canContinueFromSavedDocs = DOC_KEYS.every((docKey) =>
     Boolean(uploadedUrls[docKey]),
   );
-  const hasSelectedFilesForUpload = DOC_KEYS.every((docKey) =>
+  const hasSelectedFilesForUpload = DOC_KEYS.some((docKey) =>
     Boolean(docs[docKey]),
   );
   const isReadyForContinue =
@@ -113,22 +141,18 @@ function page() {
     setLoading(true);
     setError("");
 
-    const missingDocs = DOC_KEYS.filter(
-      (docKey) => !docs[docKey] && !uploadedUrls[docKey],
-    );
-    if (missingDocs.length > 0) {
-      setError("all documents are required");
-      setLoading(false);
-      return;
-    }
-
-    if (!hasSelectedFilesForUpload && canContinueFromSavedDocs) {
-      setLoading(false);
-      router.push("/partner/onboarding/bank");
-      return;
-    }
-
     try {
+      if (!hasSelectedFilesForUpload && canContinueFromSavedDocs) {
+        router.push("/partner/onboarding/bank");
+        return;
+      }
+      const missingDocs = DOC_KEYS.filter(
+        (docKey) => !docs[docKey] && !uploadedUrls[docKey],
+      );
+      if (missingDocs.length > 0) {
+        setError("Please upload all required documents.");
+        return;
+      }
       const formData = new FormData();
       DOC_KEYS.forEach((docKey) => {
         const file = docs[docKey];
@@ -136,19 +160,16 @@ function page() {
           formData.append(docKey, file);
         }
       });
-
       const { data } = await axios.post(
         "/api/partner/onboarding/documents",
         formData,
       );
-
       const uploaded = data?.partnerDocs;
       setUploadedUrls({
         aadhar: uploaded?.aadharUrl ?? null,
         license: uploaded?.licenseUrl ?? null,
         rc: uploaded?.rcUrl ?? null,
       });
-
       setSelectedPreviewUrls((prev) => {
         Object.values(prev).forEach((previewUrl) => {
           if (previewUrl) {
@@ -157,38 +178,42 @@ function page() {
         });
         return { ...EMPTY_URLS_STATE };
       });
+      setSelectedPreviewTypes({ ...EMPTY_PREVIEW_TYPES });
 
-      setSelectedPreviewTypes((prev) => ({
-        ...prev,
-        aadhar: null,
-        license: null,
-        rc: null,
-      }));
-
-      setLoading(false);
-      router.push("/partner/onboarding/bank");
+      setDocs({ ...EMPTY_DOCS_STATE });
+      router.push("/");
     } catch (error: any) {
-      setError(error.response?.data?.message ?? "something went wrong");
+      console.error("Document upload error:", error);
+      setError(
+        error?.response?.data?.message ??
+          "Something went wrong. Please try again.",
+      );
+    } finally {
       setLoading(false);
-      console.log("1", error);
     }
   };
-
-  const openPreview = (url: string, title: string, type?: "image" | "pdf") => {
+  const openPreview = (url: string, title: string, type?: PreviewType) => {
     if (!url) {
       return;
     }
 
-    const resolvedType = type
-      ? type
-      : url.toLowerCase().endsWith(".pdf")
-        ? "pdf"
-        : "image";
-
+    const resolvedType: PreviewType =
+      type ?? (url.toLowerCase().includes(".pdf") ? "pdf" : "image");
     setPreview({ url, title, type: resolvedType });
   };
+
+  useEffect(() => {
+    return () => {
+      Object.values(selectedPreviewUrls).forEach((url) => {
+        if (url) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 28 }}
         animate={{ opacity: 1, y: 0 }}
@@ -197,27 +222,33 @@ function page() {
       >
         <div className="relative text-center">
           <button
+            type="button"
             onClick={() => router.back()}
-            className="absolute left-0 top-0 w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 tranition"
+            className="absolute left-0 top-0 w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition"
           >
             <ArrowLeft size={18} />
           </button>
-          <p className="text-sx text-gray-500 font-medium">step 2 of 3</p>
-          <h1 className="text2xl font-bold mt-1">Upload Documents</h1>
-          <p className="text-sm text-gray-500 mt-2">Upload your Documents</p>
+          <p className="text-xs text-gray-500 font-medium">Step 2 of 3 </p>
+          <h1 className="text-2xl font-bold mt-1">Upload Documents</h1>
+          <p className="text-sm text-gray-500 mt-2">Upload your documents</p>
         </div>
         <div className="mt-8 space-y-5">
           {DOC_KEYS.map((docKey) => {
             const file = docs[docKey];
             const uploadedDocUrl = uploadedUrls[docKey];
             const pendingPreviewUrl = selectedPreviewUrls[docKey];
-            const viewDocUrl = pendingPreviewUrl ?? uploadedDocUrl;
             const pendingPreviewType = selectedPreviewTypes[docKey];
+            const viewDocUrl = pendingPreviewUrl ?? uploadedDocUrl;
+            const viewDocType =
+              pendingPreviewType ??
+              (uploadedDocUrl?.toLowerCase().includes(".pdf")
+                ? "pdf"
+                : "image");
 
             return (
               <div
                 key={docKey}
-                className="p-4 rounded-2xl border border-gray-200 transition"
+                className="p-4 rounded-2xl border border-gray-200 transition hover:border-gray-400"
               >
                 <motion.label
                   whileHover={{ scale: 1.02 }}
@@ -235,38 +266,44 @@ function page() {
                         Selected: {file.name}
                       </p>
                     )}
+
+                    {!file && uploadedDocUrl && (
+                      <p className="mt-2 text-[11px] font-medium text-emerald-700">
+                        Document uploaded
+                      </p>
+                    )}
                   </div>
+
                   <div className="flex flex-col items-end gap-2">
-                    <span className="text-xs text-gray-400">Upload</span>
+                    <span className="text-xs text-gray-400">
+                      {uploadedDocUrl ? "Replace" : "Upload"}
+                    </span>
+
                     <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center">
                       <UploadCloud size={18} />
                     </div>
                   </div>
+
                   <input
                     type="file"
                     accept="image/*,.pdf"
                     hidden
                     onChange={(e) =>
-                      handleImage(docKey, e.target?.files?.[0] || null)
+                      handleFile(docKey, e.target.files?.[0] ?? null)
                     }
                   />
                 </motion.label>
 
-                {(viewDocUrl || uploadedDocUrl) && (
-                  <div className="mt-1 flex items-center justify-between rounded-xl bg-slate-50 px-2 py-2">
+                {viewDocUrl && (
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                     <span className="text-[11px] font-semibold text-slate-600">
                       {pendingPreviewUrl ? "Selected" : "Uploaded"}
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        openPreview(
-                          viewDocUrl!,
+                      onClick={() => openPreview(viewDocUrl,
                           DOCS_COPY[docKey].title,
-                          pendingPreviewType ??
-                            (uploadedDocUrl?.toLowerCase().endsWith(".pdf")
-                              ? "pdf"
-                              : "image"),
+                          viewDocType,
                         )
                       }
                       className="text-xs font-semibold text-black underline underline-offset-4"
@@ -280,31 +317,30 @@ function page() {
           })}
         </div>
         <div className="mt-6 flex items-start gap-3 text-xs text-gray-500">
-          <FileCheck size={16} className="mt-0.5" />
+          <FileCheck size={16} className="mt-0.5 shrink-0" />
           <p>
             Documents are securely stored and manually verified by our team.
           </p>
         </div>
-        {error && <p className="text-red-500">*{error}</p>}
-
+        {error && <p className="mt-4 text-sm text-red-500">* {error}</p>}
         <motion.button
-          disabled={!isReadyForContinue || loading}
+          type="button"
+          disabled={!isReadyForContinue || loading || fetchingDocs}
           onClick={handleDocs}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
+          whileHover={{  scale: 1.02,    }}
+          whileTap={{  scale: 0.97, }}
           className="mt-8 w-full h-14 rounded-2xl bg-black text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-40 transition"
         >
           {loading ? (
-            <CircleDashed className="text-white animate-spin" />
+            <CircleDashed className="text-white animate-spin" size={22} />
           ) : (
             "Continue"
           )}
         </motion.button>
       </motion.div>
-
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-          <div className="w-full max-w-4xl rounded-3xl border border-white/20 bg-white shadow-2xl">
+          <div className="w-full max-w-4xl rounded-3xl border border-white/20 bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.20em] text-slate-500">
@@ -345,4 +381,4 @@ function page() {
   );
 }
 
-export default page;
+export default Page;

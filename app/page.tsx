@@ -1,7 +1,6 @@
 import Footer from "@/components/footer";
 import Nav from "@/components/nav";
 import PublicHome from "@/components/publicHome";
-import Image from "next/image";
 import { auth } from "./auth";
 import PartnerDashboard from "@/components/partnerDashboard";
 import AdminDashboard from "@/components/adminDashboard";

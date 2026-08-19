@@ -1,5 +1,5 @@
 import mongoose, { Mongoose } from "mongoose";
-
+type VideoKycStatus = "not_required" | "pending" | "in_progress" | "approved" | "rejected";
 export interface IUser extends mongoose.Document {
   name: string;
   email: string;
@@ -12,6 +12,9 @@ export interface IUser extends mongoose.Document {
   mobileNumber?: string;
   partnerStatus: "pending" | "approved" | "rejected";
   rejectionReason: string;
+  videoKycStatus: VideoKycStatus;
+  videoKycRoomId: string;
+  videoKycRejectionReason: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +35,18 @@ const userSchema = new mongoose.Schema<IUser>({
     required: true,
   },
   rejectionReason: {
+    type: String
+  },
+  videoKycStatus: {
+    type: String,
+    enum: ["not_required", "pending", "in_progress", "approved", "rejected"],
+    default: "not_required",
+    required: true
+  },
+  videoKycRoomId: {
+    type: String
+  },
+  videoKycRejectionReason: {
     type: String
   },
   otpExpiresAt: { type: Date }

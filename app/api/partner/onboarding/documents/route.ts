@@ -5,36 +5,91 @@ import PartnerDocs from "@/models/partnerDocs.model";
 import User from "@/models/user.model";
 import { NextRequest } from "next/server";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const ALLOWED_FILE_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "application/pdf",
+];
+
 export async function GET(req: NextRequest) {
     try {
         await connectDB();
+
         const session = await auth();
-        if (!session || !session.user?.email) {
-            return Response.json({ message: "unauthorized" }, { status: 401 });
+
+        if (!session?.user?.email) {
+            return Response.json(
+                {
+                    message: "Unauthorized",
+                },
+                {
+                    status: 401,
+                }
+            );
         }
 
-        const user = await User.findOne({ email: session.user.email });
+        const user = await User.findOne({
+            email: session.user.email,
+        });
+
         if (!user) {
-            return Response.json({ message: "User not found" }, { status: 400 });
+            return Response.json(
+                {
+                    message: "User not found",
+                },
+                {
+                    status: 404,
+                }
+            );
         }
 
-        const partnerDocs = await PartnerDocs.findOne({ owner: user._id }).lean();
+        const partnerDocs =
+            await PartnerDocs.findOne({
+                owner: user._id,
+            }).lean();
+
         if (!partnerDocs) {
-            return Response.json({ message: "Documents not found" }, { status: 404 });
+            return Response.json(
+                {
+                    message: "Documents not found",
+                },
+                {
+                    status: 404,
+                }
+            );
         }
 
         return Response.json(
             {
-                aadharUrl: partnerDocs.aadharUrl ?? null,
-                licenseUrl: partnerDocs.licenseUrl ?? null,
-                rcUrl: partnerDocs.rcUrl ?? null,
+                aadharUrl:
+                    partnerDocs.aadharUrl ?? null,
+
+                licenseUrl:
+                    partnerDocs.licenseUrl ?? null,
+
+                rcUrl:
+                    partnerDocs.rcUrl ?? null,
             },
-            { status: 200 }
+            {
+                status: 200,
+            }
         );
     } catch (error) {
+        console.error(
+            "Get partner documents error:",
+            error
+        );
+
         return Response.json(
-            { message: `get partner docs error ${error}` },
-            { status: 500 }
+            {
+                message: "Failed to get partner documents",
+            },
+            {
+                status: 500,
+            }
         );
     }
 }
@@ -64,61 +119,135 @@ export async function POST(req: NextRequest) {
         }
 
         const formData = await req.formData();
-        const aadhar = formData.get("aadhar") as Blob | null
-        const license = formData.get("license") as Blob | null
-        const rc = formData.get("rc") as Blob | null
 
-        if (!aadhar || !license || !rc) {
+        const aadhar = formData.get(
+            "aadhar"
+        ) as File | null;
+
+        const license = formData.get(
+            "license"
+        ) as File | null;
+
+        const rc = formData.get(
+            "rc"
+        ) as File | null;
+
+        if (!aadhar && !license && !rc) {
             return Response.json(
-                { message: "All documents are required" },
+                { message: "At least one documents is required" },
                 { status: 400 }
-            )
+            );
         }
-        const updatePayload: any = {
-            status: "pending"
+
+        const files = [
+            {
+                name: "Aadhar",
+                file: aadhar,
+            },
+            {
+                name: "License",
+                file: license,
+            },
+            {
+                name: "RC",
+                file: rc,
+            },
+        ];
+
+        for (const item of files) {
+            if (!item.file) {
+                continue;
+            }
+
+            if (
+                !ALLOWED_FILE_TYPES.includes(
+                    item.file.type
+                )
+            ) {
+                return Response.json(
+                    {
+                        message: `${item.name} must be JPG, PNG or PDF`,
+                    },
+                    {
+                        status: 400,
+                    }
+                );
+            }
+
+            if (item.file.size > MAX_FILE_SIZE) {
+                return Response.json(
+                    {
+                        message: `${item.name} size must be less than 10 MB`,
+                    },
+                    {
+                        status: 400,
+                    }
+                );
+            }
         }
+        const updatePayload: Record<
+            string,
+            any
+        > = {
+            status: "pending",
+        };
+
         if (aadhar) {
-            const url = await uploadOnCloudinary(aadhar)
-            if (!url) {
+            const aadharUrl = await uploadOnCloudinary(aadhar);
+            if (!aadharUrl) {
                 return Response.json(
                     { message: "Aadhar upload failed" },
                     { status: 500 }
                 )
             }
-            updatePayload.aadharUrl = url
+            updatePayload.aadharUrl = aadharUrl;
         }
         if (license) {
-            const url = await uploadOnCloudinary(license)
-            if (!url) {
+            const licenseUrl = await uploadOnCloudinary(license);
+            if (!licenseUrl) {
                 return Response.json(
                     { message: "license upload failed" },
                     { status: 500 }
                 )
             }
-            updatePayload.licenseUrl = url
+            updatePayload.licenseUrl = licenseUrl;
         }
+
         if (rc) {
-            const url = await uploadOnCloudinary(rc)
-            if (!url) {
+            const rcUrl = await uploadOnCloudinary(rc);
+            if (!rcUrl) {
                 return Response.json(
                     { message: "rc upload failed" },
                     { status: 500 }
                 )
             }
-            updatePayload.rcUrl = url
+            updatePayload.rcUrl = rcUrl;
         }
-        const partnerDocs = await PartnerDocs.findOneAndUpdate({ owner: user._id }, { $set: updatePayload }, { upsert: true, new: true })
-        if (user.partnerOnboadingSteps < 2) {
-            user.partnerOnboadingSteps = 2
-        } else {
-            user.partnerOnboardingSteps = 3
-        }
+        const partnerDocs = await PartnerDocs.findOneAndUpdate(
+            {
+                owner: user._id,
+            },
+            {
+                $set: updatePayload,
+            },
+            {
+                upsert: true,
+                new: true,
+            }
+        );
+        user.partnerOnboardingSteps = 3;
         user.partnerStatus = "pending";
         await user.save();
         return Response.json(
-            { partnerDocs },
-            { status: 201 }
-        )
+            {
+                message:
+                    "Documents uploaded successfully",
+                partnerDocs,
+            },
+            {
+                status: 201,
+            }
+        );
     } catch (error) {
         return Response.json(
             { message: `partner docs error ${error}` },

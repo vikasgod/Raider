@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
             partnerStatus: "pending",
             partnerOnboardingSteps: { $gte: 3 }
         })
-        console.log("pendingPartnerUsers", pendingPartnerUsers)
         const partnerIds = pendingPartnerUsers.map((p) => p._id)
         const partnerVehicles = await Vehicle.find({
             owner: { $in: partnerIds }
@@ -40,8 +39,15 @@ export async function GET(req: NextRequest) {
         }
         ))
 
+        const pendingVehicle = await Vehicle.find({
+            status: "pending",
+            baseFare: { $exists: true, $ne: null },
+            pricePerKM: { $exists: true, $ne: null }
+        }).populate("owner");
+
         return NextResponse.json(
             {
+                pendingVehicle,
                 stats: {
                     totalPartner,
                     totalApprovedPartner,

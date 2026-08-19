@@ -35,12 +35,22 @@ function AdminDashboard() {
       const { data } = await axios.get("/api/admin/dashboard");
       setFinalData(data.stats);
       setPartnerReview(data.pendingPartnerReviews);
+      setVehicleReview(data.pendingVehicle);
+    } catch (error) {
+      console.log("first", error);
+    }
+  };
+  const handleGetPendingKyc = async () => {
+    try {
+      const { data } = await axios.get("/api/admin/videoKyc/pending");
+      setPendingKyc(data);
     } catch (error) {
       console.log("first", error);
     }
   };
   useEffect(() => {
     handleGetData();
+    handleGetPendingKyc();
   }, []);
 
   return (

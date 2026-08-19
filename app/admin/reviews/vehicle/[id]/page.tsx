@@ -1,55 +1,62 @@
 "use client";
-import AnimatedCard from "@/components/animatedCard";
-import DocsPreview from "@/components/docsPreview";
-import { IPartnerBank } from "@/models/partnerBank.model";
-import { IPartnerDocs } from "@/models/partnerDocs.model";
 import { IUser } from "@/models/user.model";
-import { IVehicle } from "@/models/vehicle.model";
-import { AnimatePresence, motion } from "motion/react";
+import { vehicleType } from "@/models/vehicle.model";
 import axios from "axios";
 import {
   ArrowLeft,
-  Car,
   CheckCircle,
   Clock,
-  FileText,
-  Landmark,
+  ImageIcon,
+  IndianRupee,
   ShieldCheck,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
+import AnimatedCard from "@/components/animatedCard";
 
+export interface IVehicle {
+  owner: IUser;
+  type: vehicleType;
+  vehicleModel: string;
+  number: string;
+  imageUrl?: string;
+  baseFare?: number;
+  pricePerKM?: number;
+  waitingCharge?: number;
+  status: "approved" | "pending" | "rejected";
+  rejectionReason?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 function Page() {
   const { id } = useParams();
-  const [data, setData] = useState<IUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<IVehicle>();
   const router = useRouter();
-  const [vehicleDetails, setVehicleDetails] = useState<IVehicle | null>(null);
-  const [partnerDocs, setPartnerDocs] = useState<IPartnerDocs | null>(null);
-  const [partnerBank, setPartnerBank] = useState<IPartnerBank | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
+
   const [rejectionReason, setRejectionReason] = useState("");
   const [approvingLoading, setApprovingLoading] = useState(false);
   const [rejectingLoading, setRejectingLoading] = useState(false);
-  const handleGetPartner = async () => {
-    try {
-      setLoading(true);
-      const { data } = await axios.get(`/api/admin/reviews/partner/${id}`);
-      setData(data.partner);
-      setVehicleDetails(data.vehicle);
-      setPartnerDocs(data.documents);
-      setPartnerBank(data.bank);
-      setLoading(false);
-    } catch (error) {
-      console.log(error);
-      setLoading(false);
-    }
-  };
+
   useEffect(() => {
-    handleGetPartner();
-  }, []);
+    const load = async () => {
+      try {
+        const result = await axios.get(`/api/admin/reviews/vehicle/${id}`);
+        setData(result.data);
+      } catch (error: any) {
+        console.log("error", error.response.data.message ?? error);
+      }
+    };
+    load();
+  }, [id]);
 
   if (loading) {
     return (
@@ -63,7 +70,7 @@ function Page() {
     try {
       setApprovingLoading(true);
       const { data } = await axios.get(
-        `/api/admin/reviews/partner/${id}/approve`,
+        `/api/admin/reviews/vehicle/${id}/approve`,
       );
       setApprovingLoading(false);
       router.push("/");
@@ -77,9 +84,9 @@ function Page() {
     try {
       setRejectingLoading(true);
       const { data } = await axios.post(
-        `/api/admin/reviews/partner/${id}/reject`,
+        `/api/admin/reviews/vehicle/${id}/reject`,
         {
-          rejectionReason,
+          reason:rejectionReason,
         },
       );
       setRejectingLoading(false);
@@ -89,8 +96,9 @@ function Page() {
       setRejectingLoading(false);
     }
   };
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gray-50">
       <div className="sticky top-0  z-40 backdrop-blur-xl bg-white/70 border-b">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
           <button
@@ -100,14 +108,14 @@ function Page() {
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1">
-            <div className="font-semibold text-lg">{data?.name}</div>
-            <div className="text-xs text-gray-500">{data?.email}</div>
+            <div className="font-semibold text-lg">{data?.owner?.name}</div>
+            <div className="text-xs text-gray-500">{data?.owner?.email}</div>
           </div>
-          {data?.partnerStatus === "approved" ? (
+          {data?.status === "approved" ? (
             <div className="px-4 y-2 rounded-full text-xs font-semibold inline-flex items-center gap-2 bg-green-100 text-green-700">
               <CheckCircle size={14} /> Approved
             </div>
-          ) : data?.partnerStatus === "rejected" ? (
+          ) : data?.status === "rejected" ? (
             <div className="px-4 y-2 rounded-full text-xs font-semibold inline-flex items-center gap-2 bg-red-100 text-red-700">
               <XCircle size={14} /> Rejected
             </div>
@@ -118,66 +126,67 @@ function Page() {
           )}
         </div>
       </div>
-      <main className="max-w-7xl mx-auto px-4 py-12 grid lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-8">
-          <AnimatedCard title="Vehicle Details" icon={<Car size={18} />}>
+      <main className="max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-2 gap-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl overflow-hidden shadow-xl bg-white"
+        >
+          {data?.imageUrl ? (
+            <Image
+              className="w-full h-[450px] object-cover"
+              src={data?.imageUrl}
+              width={100}
+              height={100}
+              alt="vehicle"
+            />
+          ) : (
+            <div className="h-[450px] grid place-items-center text-gray-300">
+              <ImageIcon size={25} />
+            </div>
+          )}
+        </motion.div>
+        <div className="space-y-8">
+          <AnimatedCard title="Vehicle Details" icon={<Truck size={20} />}>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Vehicle Type</span>
-              <span className="font-semibold">
-                {vehicleDetails?.type || "-"}
-              </span>
+              <span className="font-semibold">{data?.type || "-"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Registration Number</span>
-              <span className="font-semibold">
-                {vehicleDetails?.number || "-"}
-              </span>
+              <span className="font-semibold">{data?.number || "-"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Model</span>
-              <span className="font-semibold">
-                {vehicleDetails?.vehicleModel || "-"}
-              </span>
+              <span className="font-semibold">{data?.vehicleModel || "-"}</span>
             </div>
           </AnimatedCard>
-          <AnimatedCard title="Documents" icon={<FileText size={18} />}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <DocsPreview label={"Aadhar"} url={partnerDocs?.aadharUrl} />
-              <DocsPreview
-                label={"Registration Certificate"}
-                url={partnerDocs?.rcUrl}
-              />
-              <DocsPreview
-                label={"Driving License"}
-                url={partnerDocs?.licenseUrl}
-              />
-            </div>
-          </AnimatedCard>
-        </div>
-        <div className="space-y-8">
-          <AnimatedCard title={"Bank Details"} icon={<Landmark size={14} />}>
+          <AnimatedCard
+            title="Pricing Configuration"
+            icon={<IndianRupee size={18} />}
+          >
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Account Name</span>
-              <span className="font-semibold">
-                {partnerBank?.accountHolder || "-"}
+              <span className="text-gray-500">Base Fare</span>
+              <span className="font-semibold flex items-center">
+                <IndianRupee size={13} /> {data?.baseFare || 0}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Account Number</span>
-              <span className="font-semibold">
-                {partnerBank?.accountNumber || "-"}
+              <span className="text-gray-500">Price Per KM</span>
+              <span className="font-semibold flex items-center">
+                <IndianRupee size={13} />
+                {data?.pricePerKM || "-"}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">IFSC Code</span>
-              <span className="font-semibold">{partnerBank?.ifsc || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">UPI</span>
-              <span className="font-semibold">{partnerBank?.upi || "-"}</span>
+              <span className="text-gray-500">Waiting Charge</span>
+              <span className="font-semibold flex items-center">
+                <IndianRupee size={13} />
+                {data?.waitingCharge || "-"}
+              </span>
             </div>
           </AnimatedCard>
-          {data?.partnerStatus == "pending" && (
+          {data?.status == "pending" && (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -193,8 +202,8 @@ function Page() {
                 <button
                   onClick={() => setShowApprove(true)}
                   className="py-3 rounded-2xl bg-linear-to-r from-black to-gray-800 
-              text-white font-semibold hover:opacity-90 cursor-pointer transition
-              "
+                        text-white font-semibold hover:opacity-90 cursor-pointer transition
+                        "
                 >
                   Approve
                 </button>
@@ -209,7 +218,6 @@ function Page() {
           )}
         </div>
       </main>
-
       <AnimatePresence>
         {showApprove && (
           <motion.div
@@ -223,7 +231,7 @@ function Page() {
               animate={{ scale: 1 }}
               className="bg-white rounded-3xl p-6 w-full max-w-sm"
             >
-              <h2 className="text-lg font-bold">Approve Partner</h2>
+              <h2 className="text-lg font-bold">Approve Vehicle</h2>
               <p className="text-sm text-gray-500 mt-2">
                 Confirm all information has been verified
               </p>
@@ -267,7 +275,7 @@ function Page() {
               animate={{ scale: 1 }}
               className="bg-white rounded-3xl p-6 w-full max-w-sm"
             >
-              <h2 className="text-lg font-bold">Reject Partner</h2>
+              <h2 className="text-lg font-bold">Reject Vehicle</h2>
               <p className="text-sm text-gray-500 mt-2">
                 <textarea
                   value={rejectionReason}

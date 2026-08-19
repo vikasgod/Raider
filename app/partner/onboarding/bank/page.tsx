@@ -58,8 +58,8 @@ function Page() {
         upi: bankForm.upi.trim(),
         mobileNumber: bankForm.mobileNumber.trim(),
       });
-
-      console.log("bank response", data);
+      setLoading(false);
+      router.push("/");
     } catch (err: any) {
       const message =
         err?.response?.data?.message || err?.message || "Something went wrong";
@@ -74,7 +74,6 @@ function Page() {
     const fetchDocs = async () => {
       try {
         const { data } = await axios.get("/api/partner/onboarding/bank");
-        console.log("35463", data);
         setBankForm({
           accountHolder: data?.partnerBank?.accountHolder ?? "",
           accountNumber: data?.partnerBank?.accountNumber ?? "",

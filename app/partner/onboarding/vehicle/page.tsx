@@ -38,7 +38,7 @@ function page() {
       if (data.status != 200) {
         setError(data.message);
       }
-      router.push("/partner/onboarding/documents");
+      router.push("/");
 
       setLoading(false);
     } catch (error: any) {

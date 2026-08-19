@@ -3,9 +3,20 @@ import React from "react";
 import { motion } from "motion/react";
 import { ArrowRight, CheckCircle2, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 function ContentList({ data, type }: any) {
   const router = useRouter();
+
+  const handleStartVideoKyc = async (id: any) => {
+    try {
+      const result = await axios.get(`/api/admin/videoKyc/start/${id}`);
+      window.location.reload();
+      console.log("000", result);
+    } catch (error) {
+      console.log("first", error);
+    }
+  };
   if (data?.length === 0) {
     return (
       <motion.div
@@ -34,8 +45,8 @@ function ContentList({ data, type }: any) {
         <p className="text-xs text-gray-400">{data.length} items</p>
       </div>
       {data.map((item: any, index: number) => {
-        const name = item.name;
-        const email = item.email;
+        const name = item.name || item.owner.name;
+        const email = item.email || item.owner.email;
         return (
           <motion.div
             key={index}
@@ -47,7 +58,7 @@ function ContentList({ data, type }: any) {
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 bg-purple-100 text-purple-800">
-                {name.charAt(0).toUpperCase() ?? <User size={14} />}
+                {name?.charAt(0).toUpperCase() ?? <User size={14} />}
               </div>
               <div className="min-w-0">
                 <p className="font-bold text-sm text-gray-900 truncate">
@@ -57,17 +68,37 @@ function ContentList({ data, type }: any) {
               </div>
             </div>
             <div className="shrink-0">
-              <motion.button
-                onClick={() => {
-                  type == "partner"
-                    ? router.push(`/admin/reviews/partner/${item._id}`)
-                    : router.push(`/admin/reviews/vehicle/${item._id}`);
-                }}
-                whileTap={{ scale: 0.96 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors hover:cursor-pointer"
-              >
-                Review <ArrowRight size={14} />
-              </motion.button>
+              {item.videoKycStatus == "pending" ? (
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors hover:cursor-pointer"
+                  onClick={() => handleStartVideoKyc(item._id)}
+                >
+                  Start Video KYC <ArrowRight size={14} />
+                </motion.button>
+              ) : item.videoKycStatus == "in_progress" ? (
+                <motion.button
+                  onClick={() =>
+                    router.push(`/video-kyc/${item.videoKycRoomId}`)
+                  }
+                  whileTap={{ scale: 0.96 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors hover:cursor-pointer"
+                >
+                  Join Call <ArrowRight size={14} />
+                </motion.button>
+              ) : (
+                <motion.button
+                  onClick={() => {
+                    type == "partner"
+                      ? router.push(`/admin/reviews/partner/${item._id}`)
+                      : router.push(`/admin/reviews/vehicle/${item._id}`);
+                  }}
+                  whileTap={{ scale: 0.96 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors hover:cursor-pointer"
+                >
+                  Review <ArrowRight size={14} />
+                </motion.button>
+              )}
             </div>
           </motion.div>
         );

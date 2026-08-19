@@ -20,29 +20,27 @@ export async function POST(req: NextRequest) {
             return Response.json(
                 { message: "send all bank details" },
                 { status: 400 }
-            )
+            );
         }
         const partnerBank = await PartnerBank.findOneAndUpdate(
             { owner: user._id },
             { accountHolder, accountNumber, ifsc, upi, status: "added" },
             { upsert: true, new: true }
-        )
+        );
 
         user.mobileNumber = mobileNumber;
-
-        user.partnerOnboardingSteps = 3
+        user.partnerOnboardingSteps = 3;
         user.partnerStatus = "pending";
         await user.save();
         return Response.json(
-            partnerBank, {
-            status: 201
-        }
-        )
+            { partnerBank },
+            { status: 201 }
+        );
     } catch (error) {
         return Response.json(
             { message: `partner bank error ${error}` },
             { status: 500 }
-        )
+        );
     }
 }
 
@@ -65,19 +63,23 @@ export async function GET(req: NextRequest) {
         }
         const partnerBank = await PartnerBank.findOne(
             { owner: user._id }
-        )
+        );
 
         if (partnerBank) {
             return Response.json(
-                { partnerBank, mobileNumber: user.mobileNumber }, { status: 200 }
-            )
+                { partnerBank, mobileNumber: user.mobileNumber },
+                { status: 200 }
+            );
         } else {
-            return null
+            return Response.json(
+                { message: "No bank details found" },
+                { status: 404 }
+            );
         }
     } catch (error) {
         return Response.json(
             { message: `get partner bank error ${error}` },
             { status: 500 }
-        )
+        );
     }
 }
