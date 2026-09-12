@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
                 new: true,
             }
         );
-        user.partnerOnboardingSteps = 3;
+        user.partnerOnboardingSteps = 2;
         user.partnerStatus = "pending";
         await user.save();
         return Response.json(

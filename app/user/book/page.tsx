@@ -125,14 +125,14 @@ function Page() {
             p.country,
             p.city,
             p.state,
-            p.postcode,
+            p.postcode
           ]
             .filter(Boolean)
             .join(", ");
           setPickUp(address);
           setPickUpCountry(p.country);
-          setPickUpLat(p.latitude);
-          setPickUpLog(p.longitude);
+          setPickUpLat(data.features[0].geometry.coordinates[1]);
+          setPickUpLog(data.features[0].geometry.coordinates[0]);
           setPickUpSuggestions([]);
           setLocating(false);
         }

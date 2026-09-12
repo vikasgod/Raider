@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       } else {
         user.partnerOnboardingSteps = 3;
         user.partnerStatus = "pending";
-        
+
         await user.save();
       }
 
