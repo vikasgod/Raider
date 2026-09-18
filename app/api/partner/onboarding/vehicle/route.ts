@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       await vehicle.save();
 
       if (user.partnerOnboardingSteps < 2) {
-        user.partnerOnboardingSteps = 2;
+        user.partnerOnboardingSteps = 1;
         user.partnerStatus = "pending";
 
         await user.save();

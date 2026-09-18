@@ -15,7 +15,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import axios from "axios";
-import { IVehicle } from "@/models/vehicle.model";
+import { vehicleType } from "@/models/vehicle.model";
 import VehicleCard from "@/components/vehicleCard";
 
 const SearchMap = dynamic(() => import("@/components/searchMap"), {
@@ -29,6 +29,22 @@ const VEHICLE_META: any = {
   loading: { label: "Loading", Icon: Truck },
   tuck: { label: "Truck", Icon: Truck },
 };
+
+interface IVehicle {
+  owner: string,
+  type: vehicleType;
+  vehicleModel: string;
+  number: string;
+  imageUrl?: string;
+  baseFare?: number;
+  pricePerKM?: number;
+  waitingCharge?: number;
+  status: "approved" | "pending" | "rejected";
+  rejectionReason?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 function Page() {
   const router = useRouter();
@@ -241,7 +257,21 @@ function Page() {
                   ease: [0.22, 1, 0.36, 1],
                 }}
               >
-                <VehicleCard vehicle={v} distance={km} />
+                <VehicleCard vehicle={v} distance={km} onBook={()=>{
+                  const url = new URLSearchParams({
+                    pickup,
+                    drop,
+                    vehicle: v.type,
+                    driverId:v.owner,
+                    fare:String(v.baseFare! + (v.pricePerKM! * km)),
+                    pickupLat:String(pickupLat),
+                    pickupLog:String(pickupLog),
+                    dropLat:String(dropLat),
+                    dropLog:String(dropLog),
+                    mobile:String(mobile),
+                  })
+                  router.push(`/user/checkout?${url.toString()}`)
+                }} />
               </motion.div>
             ))}
           </div>

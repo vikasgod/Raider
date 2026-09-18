@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
                         type: "Point",
                         coordinates: [longitude, latitude],
                     },
-                    $maxDistance: 10000,
-                    $minDistance: 0,
+                    // $maxDistance: 10000,
+                    // $minDistance: 0,
                 },
             },
         })
