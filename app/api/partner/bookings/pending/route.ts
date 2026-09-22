@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
         if (!partner) {
             return NextResponse.json({ message: "partner not found" }, { status: 400 });
         }
-        console.log("first",partner)
-        const bookings = await Booking.findOne({
+      
+        const bookings = await Booking.find({
             driver: partner._id,
             bookingStatus: "requested"
         })

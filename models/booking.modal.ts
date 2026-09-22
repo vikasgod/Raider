@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-type BookingStatus =
+export type BookingStatus =
     "idle"
     | "requested"
     | "awaiting_payment"
@@ -11,9 +11,10 @@ type BookingStatus =
     | "rejected"
     | "expired";
 
-type PaymentStatus = "pending" | "paid" | "failed";
+export type PaymentStatus = "pending" | "paid" | "failed";
 
 export interface IBooking {
+    _id: string;
     user: mongoose.Types.ObjectId;
     driver: mongoose.Types.ObjectId;
     vehicle: mongoose.Types.ObjectId;
@@ -35,6 +36,8 @@ export interface IBooking {
 
     bookingStatus: BookingStatus;
     paymentStatus: PaymentStatus;
+
+    paymentDeadline: Date;
 
     adminCommission: number;
     partnerAmount: number;
@@ -88,7 +91,7 @@ const BookingSchema = new mongoose.Schema<IBooking>({
         },
         coordinates: [Number],
     },
-    fare:{
+    fare: {
         type: Number,
         required: true,
     },
@@ -105,12 +108,16 @@ const BookingSchema = new mongoose.Schema<IBooking>({
     bookingStatus: {
         type: String,
         enum: ["idle", "requested", "awaiting_payment", "confirmed", "started", "completed", "cancelled", "rejected", "expired"],
-        default:"idle"
+        default: "idle"
     },
     paymentStatus: {
         type: String,
-        enum: ["pending", "paid", "failed","cash"],
-        default:"pending"
+        enum: ["pending", "paid", "failed", "cash"],
+        default: "pending"
+    },
+
+    paymentDeadline: {
+        type: Date
     },
 
     adminCommission: {
@@ -119,7 +126,7 @@ const BookingSchema = new mongoose.Schema<IBooking>({
     },
     partnerAmount: {
         type: Number,
-        default:0,
+        default: 0,
     },
 
     pickUpOtp: {
@@ -134,12 +141,11 @@ const BookingSchema = new mongoose.Schema<IBooking>({
     },
     dropOtpExpires: {
         type: Date,
-    },
+    }
+},
+    { timestamps: true },
+);
 
-    createdAt: Date,
-    updatedAt: Date,
-});
 
-
-const Booking = mongoose.models.Booking || mongoose.model("Booking",BookingSchema); 
+const Booking = mongoose.models.Booking || mongoose.model("Booking", BookingSchema);
 export default Booking;
