@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +10,8 @@ import { RootState } from "@/redux/store";
 import { Bike, Car, ChevronRight, LogOut, Menu, Truck, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { setUserData } from "@/redux/userSlice";
-const Nav_Items = ["Home", "About", "Services", "Contact"];
+import axios from "axios";
+const Nav_Items = ["Home", "Bookings", "About Us", "Contact"];
 function Nav() {
   const pathName = usePathname();
   const [authOpen, SetAuthOpen] = useState(false);
@@ -18,12 +19,29 @@ function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { userData } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch();
-  const router = useRouter()
+  const router = useRouter();
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const handleLogout = async () => {
     await signOut({ redirect: false });
     dispatch(setUserData(null));
     setProfileOpen(false);
   };
+
+  const fetchCount = async () => {
+    try {
+      const { data } = await axios.get(
+        "/api/partner/bookings/pendingRequestCount",
+      );
+      setPendingRequestCount(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    if (userData?.role === "partner") {
+      fetchCount();
+    }
+  }, [userData]);
   return (
     <>
       <motion.div
@@ -42,24 +60,61 @@ function Nav() {
             style={{ width: "auto", height: "auto" }}
           />
           <div className="hidden md:flex items-center gap-10">
-            {Nav_Items.map((item, index) => {
-              let href;
-              if (item == "Home") {
-                href = "/";
-              } else {
-                href = `/${item.toLowerCase()}`;
-              }
-              const active = href === pathName;
-              return (
+            {userData?.role === "partner" ? (
+              <>
                 <Link
-                  href={href}
-                  key={index}
-                  className={`text-sm font-medium transition ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
+                  className="relative text-sm font-medium text-gray-300 hover:text-white transition"
+                  href="/"
                 >
-                  {item}
+                  Home
                 </Link>
-              );
-            })}
+                <Link
+                  className="relative text-sm font-medium text-gray-300 hover:text-white transition"
+                  href="/partner/pending-requests"
+                >
+                  Pending Requests
+                  <span
+                    className="absolute -top-2 -right-2 w-5 h-5 
+                  rounded-full bg-white text-black 
+                  text-xs flex items-center 
+                  justify-center font-bold"
+                  >
+                    {pendingRequestCount ?? 0}
+                  </span>
+                </Link>
+                <Link
+                  className="relative text-sm font-medium text-gray-300 hover:text-white transition"
+                  href="/partner/bookings"
+                >
+                  Bookings
+                </Link>
+                <Link
+                  className="relative text-sm font-medium text-gray-300 hover:text-white transition"
+                  href="/partner/active-ride"
+                >
+                  Active Ride
+                </Link>
+              </>
+            ) : (
+              Nav_Items.map((item, index) => {
+                let href;
+                if (item == "Home") {
+                  href = "/";
+                } else {
+                  href = `/${item.toLowerCase()}`;
+                }
+                const active = href === pathName;
+                return (
+                  <Link
+                    href={href}
+                    key={index}
+                    className={`text-sm font-medium transition ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
+                  >
+                    {item}
+                  </Link>
+                );
+              })
+            )}
           </div>
           <div className="flex items-center gap-3 relative">
             <div className="hidden md:block relative">
@@ -94,7 +149,12 @@ function Nav() {
                             {userData.role}
                           </p>
                           {userData.role != "partner" && (
-                            <div onClick={()=>router.push("/partner/onboarding/vehicle")} className="w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl">
+                            <div
+                              onClick={() =>
+                                router.push("/partner/onboarding/vehicle")
+                              }
+                              className="w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl"
+                            >
                               <div className="flex -space-x-2">
                                 <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center">
                                   <Bike size={16} />
@@ -215,7 +275,10 @@ function Nav() {
                   {userData.role}
                 </p>
                 {userData.role != "partner" && (
-                  <div onClick={()=>router.push("/partner/onboarding/vehicle")} className="w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl">
+                  <div
+                    onClick={() => router.push("/partner/onboarding/vehicle")}
+                    className="w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl"
+                  >
                     <div className="flex -space-x-2">
                       <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center">
                         <Bike size={16} />

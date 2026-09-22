@@ -87,6 +87,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user?.email || token.email; // Add email to the token
       }
 
+      if (token.email) {
+        await connectDB();
+        const currentUser = await User.findOne({ email: token.email }).select("role");
+        if (currentUser?.role) {
+          token.role = currentUser.role;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {

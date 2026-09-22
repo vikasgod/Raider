@@ -469,7 +469,9 @@ function Page() {
                 whileHover={{ scale: 1.05 }}
                 onClick={() => {
                   router.push(
-                    `/user/search?pickup=${encodeURIComponent(pickUp)}&drop=${encodeURIComponent(drop)}&vehicle=${encodeURIComponent(vehicle!)}&mobile=${encodeURIComponent(mobile)}&pickupLat=${pickUpLat}&pickupLog=${pickUpLog}&dropLat=${dorpLat}`,
+                    `/user/search?pickup=${encodeURIComponent(pickUp)}&drop=${encodeURIComponent(drop)}&vehicle=${encodeURIComponent(vehicle!)}&mobile=${encodeURIComponent(mobile)}&pickupLat=${pickUpLat}&pickupLog=${pickUpLog}
+                    &dropLat=${dorpLat}
+                    &dropLog=${dropLog}`
                   );
                 }}
                 className="w-full h-14 rounded-2xl bg-zinc-900 hover:bg-black disabled:opacity-10 text-white text-sm font-black tracking-wide flex items-center justify-center gap-2 transition-colors shadow-lg disabled:shadow-none"
