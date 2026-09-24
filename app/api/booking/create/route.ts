@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/auth"
 import User from "@/models/user.model";
 import Booking from "@/models/booking.modal";
+import axios from "axios";
 
 
 export async function POST(req: NextRequest) {
@@ -58,6 +59,12 @@ export async function POST(req: NextRequest) {
             driverMobileNumber: driver.mobileNumber,
             bookingStatus: "requested",
 
+        })
+
+        await axios.post(`${process.env.NEXT_PUBLIC_SOCKET_URL}/emit`, {
+            event: "new-booking",
+            userId: driverId,
+            data: booking
         })
 
         return NextResponse.json(booking, { status: 200 })

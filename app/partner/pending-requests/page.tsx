@@ -4,10 +4,13 @@ import { motion } from "motion/react";
 import axios from "axios";
 import { IBooking } from "@/models/booking.modal";
 import { Clock, IndianRupee, Loader2, MapPin, Navigation } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getSocket } from "@/lib/soket";
 
 function Page() {
   const [bookings, setBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const fetchPendingRequests = async () => {
     try {
       setLoading(true);
@@ -23,13 +26,20 @@ function Page() {
     fetchPendingRequests();
   }, []);
 
+  useEffect(() => {
+    const socket = getSocket();
+    socket.on("new-booking", (data: any) => {
+      setBookings((prev) => [...prev, data]);
+    });
+    return () => {
+      socket.off("new-booking");
+    };
+  }, []);
+
   const handleAccept = async (id: string) => {
     try {
       const { data } = await axios.get(`/api/partner/bookings/${id}/accept`);
-      console.log(data);
-      // if (data.success) {
-      //   fetchPendingRequests();
-      // }
+      router.push("/partner/bookings");
     } catch (error) {
       console.log(error);
     }
@@ -38,11 +48,7 @@ function Page() {
   const handleReject = async (id: string) => {
     try {
       const { data } = await axios.get(`/api/partner/bookings/${id}/reject`);
-      console.log(data);
-
-      // if (data.success) {
-      //   fetchPendingRequests();
-      // }
+      window.location.reload();
     } catch (error) {
       console.log(error);
     }

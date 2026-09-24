@@ -11,6 +11,7 @@ import { Bike, Car, ChevronRight, LogOut, Menu, Truck, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { setUserData } from "@/redux/userSlice";
 import axios from "axios";
+import { getSocket } from "@/lib/soket";
 const Nav_Items = ["Home", "Bookings", "About Us", "Contact"];
 function Nav() {
   const pathName = usePathname();
@@ -37,6 +38,16 @@ function Nav() {
       console.log(error);
     }
   };
+  useEffect(() => {
+    const socket = getSocket();
+    socket.on("new-booking", (data: any) => {
+      setPendingRequestCount((prev) => prev + 1);
+    });
+    return () => {
+      socket.off("new-booking");
+    };
+  }, []);
+
   useEffect(() => {
     if (userData?.role === "partner") {
       fetchCount();
@@ -101,7 +112,7 @@ function Nav() {
                 if (item == "Home") {
                   href = "/";
                 } else {
-                  href = `/${item.toLowerCase()}`;
+                  href = `/user/${item.toLowerCase()}`;
                 }
                 const active = href === pathName;
                 return (
