@@ -169,7 +169,7 @@ function SearchMap({ pickup, drop, onChange, onDistance }: Props) {
   const loadRoute = async (p: [number, number], d: [number, number]) => {
     try {
       const { data } = await axios.get(
-        `https://router.project-osrm.org/route/v1/driving/${p[1]},${p[0]};${d[1]},${d[0]}?overview=full&geometries=geojson`,
+        `https://router.project-osrm.org/route/v1/driving/${p[1]},${p[0]};${d[1]},${d[0]}?overview=full&geometries=geojson`,    
       );
       if (!data.routes.length) return;
 

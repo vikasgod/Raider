@@ -11,7 +11,7 @@ export type BookingStatus =
     | "rejected"
     | "expired";
 
-export type PaymentStatus = "pending" | "paid" | "failed";
+export type PaymentStatus = "pending" | "paid" | "cash" | "failed";
 
 export interface IBooking {
     _id: string;
