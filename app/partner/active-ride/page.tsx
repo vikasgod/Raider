@@ -106,6 +106,7 @@ function Page() {
   const [etaToDrop, setEtaToDrop] = useState(0);
   const [status, setStatus] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [expand, setExpand] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -155,7 +156,7 @@ function Page() {
 
   const onChatToggle = () => {
     setChatOpen(!chatOpen);
-  }
+  };
 
   if (loading) {
     return (
@@ -175,7 +176,7 @@ function Page() {
   const displayDistance =
     status === "confirmed" ? distanceTopPickUp : distanceTopDrop;
   const canChat = bookings?.bookingStatus === "confirmed";
-    const paymentStatus = PAYMENT_BADGE[bookings?.paymentStatus! ?? "pending"];
+  const paymentStatus = PAYMENT_BADGE[bookings?.paymentStatus! ?? "pending"];
   const panelProps = {
     isActive,
     displayDistance,
@@ -187,6 +188,7 @@ function Page() {
     canChat,
     chatOpen,
     onChatToggle,
+    currentRole: "driver",
   };
 
   return (
@@ -260,6 +262,53 @@ function Page() {
           </div>
         </div>
       </motion.div>
+
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
+        <motion.div
+          className="bg-white rounded-t-3xl shadow-2xl
+        pointer-events-auto
+        overflow-hidden flex flex-col"
+          animate={{ height: expand ? "82vh" : 142 }}
+          transition={{ type: "spring", stiffness: 320, damping: 38 }}
+        >
+          <div
+            onClick={() => setExpand((p) => !p)}
+            className="flex-shrink-0 cursor-pointer select-none"
+          >
+            <div className="pt-3 pb-1">
+              <div className="w-10 h-1 bg-zinc-200 rounded-full mx-auto" />
+            </div>
+            <div className="px-5 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${cgf?.dot}`}
+                />
+                <div>
+                  <p className="text-sm font-bold text-zinc-900 leading-tight">
+                    {cgf?.label}
+                  </p>
+                  <p className="text-xs text-zinc-400 leading-tight">
+                    {cgf?.sublabel}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {isActive && (
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-zinc-900 leading-none">
+                      {Math.round(displayEta)}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-wider">
+                      min
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

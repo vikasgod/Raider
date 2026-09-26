@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 import { NextRequest, NextResponse } from "next/server";
 import Booking from "@/models/booking.modal";
+import "@/models/vehicle.model";
 
 export async function GET(req: NextRequest) {
     try {
@@ -24,4 +25,4 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         return NextResponse.json({ message: `get active ride error ${error}` }, { status: 500 })
     }
-}
+} 

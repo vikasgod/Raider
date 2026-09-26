@@ -1,9 +1,29 @@
 import React, { useEffect } from "react";
-import { Clock, IndianRupee, MessageCircle, Phone, User } from "lucide-react";
+import {
+  Bike,
+  Car,
+  Clock,
+  IndianRupee,
+  MessageCircle,
+  Phone,
+  Truck,
+  User,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import RideChat from "./rideChat";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+
+const getVehicleIcon = (vehicleType: string) => {
+  const icons: Record<string, any> = {
+    bike: <Bike className="w-4 h-4 text-white" />,
+    loading: <Car className="w-4 h-4 text-white" />,
+    auto: <Car className="w-4 h-4 text-white" />,
+    car: <Car className="w-4 h-4 text-white" />,
+    truck: <Truck className="w-4 h-4 text-white" />,
+  };
+  return icons[vehicleType];
+};
 
 function PanelContent({
   isActive,
@@ -16,15 +36,10 @@ function PanelContent({
   canChat,
   chatOpen,
   onChatToggle,
+  currentRole,
 }: any) {
   const { userData } = useSelector((state: RootState) => state.user);
-  let currentRole;
-  useEffect(() => {
-    if (userData) {
-      currentRole = userData?._id === bookings.driver._id ? "driver" : "user";
-    console.log(currentRole);
-    }
-  }, [userData]);
+
   return (
     <div className="flex flex-col pt-5 pb-4 gap-3">
       {isActive && (
@@ -142,17 +157,75 @@ function PanelContent({
           >
             <div className="rounded-2xl overflow-hidden border border-zinc-100 h-[460px]">
               <RideChat
-              currentRole={currentRole}
-              bookingId={bookings._id}
-              userName={bookings.user.name || "Customer"}
-              driverName={bookings.driver.name || "Driver"}
+                currentRole={currentRole}
+                bookingId={bookings._id}
+                userName={bookings.user.name || "Customer"}
+                driverName={bookings.driver.name || "Driver"}
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {bookings?.vehicle && (
+        <div className="mx-5 lg:mx-6">
+          <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-zinc-900 flex items-center justify-center flex-shrink-0">
+              {getVehicleIcon(bookings?.vehicle.type ?? "Car")}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">
+                Your Vehicle
+              </p>
+              <p className="text-sm font-bold text-zinc-900 truncate">
+                {bookings?.vehicle.vehicleModel ?? "Vehicle"}
+              </p>
+            </div>
+            <div className="flex-shrink-0 bg-zinc-900 px-3 py-1.5 rounded-lg">
+              <p className="text-white text-xs font-black tracking-widest font-mono">
+                {bookings?.vehicle.number ?? "number"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mx-5 lg:mx-6">
+        <div className="bg-zinc-50 border border-zinc-100 rounded-2xl overflow-hidden">
+          <div className="flex gap-3 p-4 border-b border-zinc-100">
+            <div className="flex flex-col items-center flex-shrink-0 pt-1">
+              <div className="w-3 h-3 rounded-full bg-zinc-900 border-2 border-white shadow-sm" />
+              <div className="w-px bg-zinc-200 mt-1" style={{ height: 20 }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">
+                PickUp
+              </p>
+              <p className="text-sm text-zinc-800 leading-snug">
+                {bookings?.pickUpAddress}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 p-4 border-b border-zinc-100">
+            <div className="flex flex-col items-center flex-shrink-0 pt-1">
+              <div className="w-3 h-3 rounded-full bg-zinc-900 border-2 border-white shadow-sm" />
+              <div className="w-px bg-zinc-200 mt-1" style={{ height: 20 }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">
+                Drop
+              </p>
+              <p className="text-sm text-zinc-800 leading-snug">
+                {bookings?.dropAddress}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default PanelContent;
+    
