@@ -1,12 +1,14 @@
 "use client";
 import axios from "axios";
 import { Send, Sparkle, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+import { getSocket } from "@/lib/soket";
 
 type message = {
+  _id?: string;
   bookingId: string;
   sender: "user" | "driver";
   text: string;
@@ -23,14 +25,21 @@ function RideChat({ currentRole, bookingId, userName, driverName }: any) {
   const [showAI, setShowAI] = useState(false);
   const { userData } = useSelector((state: RootState) => state.user);
   const [aiLoading, setAILoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
   const sendMsg = async () => {
+    const socket = getSocket();
     try {
       const { data } = await axios.post("/api/chat/send", {
         bookingId,
         sender: currentRole,
-        text: text,
+        text,
       });
-      setMessages([...messages, data]);
+      socket.emit("chat-message", data);
       setText("");
     } catch (error) {
       console.log(error);
@@ -51,6 +60,25 @@ function RideChat({ currentRole, bookingId, userName, driverName }: any) {
 
   useEffect(() => {
     getAllMessages();
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    // const handleChatMessage = (data: message) => {
+    //   setMessages((prev) => {
+    //     if (data._id && prev.some((item) => item._id === data._id)) {
+    //       return prev;
+    //     }
+    //     return [...prev, data];
+    //   });
+    // };
+
+    socket.on("chat-message", (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+    return () => {
+      socket.off("chat-message");
+    };
   }, []);
 
   const getAISuggestions = async () => {
@@ -146,12 +174,16 @@ border-zinc-100"
                     }`}
                 >
                   <p className="break-words">{v.text}</p>
-                  <span className="text-[10px] text-gray-200">{formateTime(v.createdAt)}</span>
+                  <span className="text-[10px] text-gray-200">
+                    {formateTime(v.createdAt)}
+                  </span>
                 </div>
               </motion.div>
             );
           })}
+        <div ref={messagesEndRef} />
       </div>
+
       <AnimatePresence>
         {showAI && messages.length > 0 && (
           <motion.div

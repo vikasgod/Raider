@@ -3,9 +3,18 @@ import { BookingStatus, IBooking, PaymentStatus } from "@/models/booking.modal";
 import axios from "axios";
 import dynamic from "next/dynamic";
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowRight,
+  ChevronUp,
+  KeyRound,
+  MapPin,
+  Navigation,
+  Zap,
+} from "lucide-react";
 import PanelContent from "@/components/panelContent";
+import { getSocket } from "@/lib/soket";
+import CompletedScreen from "@/components/completedScreen";
 
 const LiveRideMap = dynamic(() => import("@/components/liveRideMap"), {
   ssr: false,
@@ -107,6 +116,92 @@ function Page() {
   const [status, setStatus] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [expand, setExpand] = useState(false);
+  // pick otp
+  const [otpMode, setOtpMode] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [loadingOtp, setLoadingOtp] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
+  // drop otp
+  const [dropOtpMode, setDropOtpMode] = useState(false);
+  const [dropOtp, setDropOtp] = useState("");
+  const [loadingDropOtp, setLoadingDropOtp] = useState(false);
+  const [dropOtpError, setDropOtpError] = useState("");
+
+  const handleSendPickupOtp = async () => {
+    try {
+      const { data } = await axios.post(
+        "/api/partner/bookings/otp/pickup/send",
+        {
+          bookingId: bookings?._id,
+        },
+      );
+      console.log("first", data);
+      setOtpMode(true);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleSendDropOtp = async () => {
+    try {
+      const { data } = await axios.post("/api/partner/bookings/otp/drop/send", {
+        bookingId: bookings?._id,
+      });
+      setDropOtpMode(true);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleVerifyPickupOtp = async () => {
+    setLoadingOtp(true);
+    try {
+      const { data } = await axios.post(
+        "/api/partner/bookings/otp/pickup/verify",
+        {
+          bookingId: bookings?._id,
+          otp,
+        },
+      );
+      setOtpVerified(true);
+      setLoadingOtp(false);
+      setOtpMode(false);
+      setStatus("started"); 
+      setBookings((prev) =>
+        prev ? { ...prev, bookingStatus: "started" } : prev,
+      );
+      console.log("first", data);
+    } catch (error: any) {
+      console.log(error);
+      setLoadingOtp(false);
+      setOtpError(error.response.data.message ?? "Verification failed");
+    }
+  };
+
+  const handleVerifyDropOtp = async () => {
+    setLoadingDropOtp(true);
+    try {
+      const { data } = await axios.post(
+        "/api/partner/bookings/otp/drop/verify",
+        {
+          bookingId: bookings?._id,
+          otp:dropOtp,
+        },
+      );
+      setLoadingDropOtp(false);
+      setDropOtpMode(true);
+      setStatus("completed");
+      setBookings((prev) =>
+        prev ? { ...prev, bookingStatus: "completed" } : prev,
+      );
+    } catch (error: any) {
+      console.log(error);
+      setLoadingDropOtp(false);
+      setDropOtpError(error.response.data.message ?? "Verification failed");
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -134,11 +229,20 @@ function Page() {
 
   useEffect(() => {
     if (!navigator.geolocation) return;
+
+    const socket = getSocket();
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const lat = position.coords.latitude;
         const long = position.coords.longitude;
         setDriverPos([lat, long]);
+        socket.emit("driver-location-update", {
+          bookingId: bookings?._id,
+          latitude: lat,
+          longitude: long,
+          status: status,
+        });
       },
       (error) => {
         console.log("gps error", error);
@@ -152,7 +256,20 @@ function Page() {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
+  }, [bookings?._id]);
+
+  useEffect(() => {
+    if (!bookings?._id) return;
+    const socket = getSocket();
+    socket.emit("join-ride", bookings?._id);
+    socket.on("driver-location", ({ latitude, longitude }) => {
+      setDriverPos([latitude, longitude]);
+    });
+    return () => {
+      socket.off("join-ride");
+      socket.off("driver-location");
+    };
+  }, [bookings?._id]);
 
   const onChatToggle = () => {
     setChatOpen(!chatOpen);
@@ -170,6 +287,14 @@ function Page() {
       </div>
     );
   }
+
+
+  if(status === "completed" && bookings ){
+    return (
+      <CompletedScreen booking={bookings} role="driver" />
+    )
+  }
+
   const cgf = STATUS_LABEL[bookings?.bookingStatus! ?? "confirmed"];
   const isActive = ["confirmed", "started"].includes(status);
   const displayEta = status === "confirmed" ? etaToPickUp : etaToDrop;
@@ -232,6 +357,8 @@ function Page() {
         </motion.div>
       </div>
 
+      {/* desktop view */}
+
       <motion.div
         initial={{ x: 60, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -260,9 +387,197 @@ function Page() {
           <div className="flex-1 overflow-y-auto scorllbar-hide">
             <PanelContent {...panelProps} />
           </div>
+
+          <div className="flex-shrink-0 border-t border-zinc-100 bg-white px-5 py-4">
+            <AnimatePresence mode="wait">
+              {status === "confirmed" && !otpMode && !otpVerified && (
+                <motion.button
+                  key="arrived"
+                  onClick={() => handleSendPickupOtp()}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 active:scale-[0.97]
+                    text-white py-4 rounded-2xl font-bold text-sm tracking-widde
+                    transition-all flex items-center justify-center gap-2"
+                >
+                  <MapPin size={16} /> I've Arrived at Pickup
+                  <ArrowRight size={15} />
+                </motion.button>
+              )}
+
+              {status === "confirmed" && otpMode && !otpVerified && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-zinc-50 border border-zinc-200 rounded-2xl overflow-hidden"
+                >
+                  <div className="bg-zinc-950 px-4 py-3 flex items-center gap-2">
+                    <KeyRound size={14} className="text-amber-400" />
+                    <p className="text-white text-xs font-bold tracking-wide uppercase">
+                      Enter Customer OTP
+                    </p>
+                  </div>
+                  <div className="p-4 spacee-y-3">
+                    <p className="text-xs text-zinc-500">
+                      Ask the cistomer for their 4-digit OTP to start the ride
+                    </p>
+                    <div className="flex justify-center">
+                      <input
+                        type="text"
+                        onChange={(e) => {
+                          setOtp(e.target.value.replace(/\D/g, ""));
+                          setOtpError("");
+                        }}
+                        placeholder=". . . ."
+                        className="w-48 border-2 border-zinc-200 
+                          focus:border-zinc-900 rounded-xl px-4 py-3
+                          text-center text-2xl tracking-[0.5em] font-black
+                          outline-none transition-colors"
+                      />
+                    </div>
+
+                    {otpError && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-500 text-xs text-center font-medium"
+                      >
+                        {otpError}
+                      </motion.p>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          setOtpMode(false);
+                          setOtp("");
+                          setOtpError("");
+                        }}
+                        className="flex-1 border border-zinc-200 bg-white text-zinc-700 py-2.5
+                          rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleVerifyPickupOtp}
+                        disabled={loadingOtp || otp.length < 4}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800
+                      disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-bold active:scale-[0.97]      
+                      transition-all"
+                      >
+                        {loadingOtp ? (
+                          <span className="flex items-center justify-center gap-2">
+                            Verifying...
+                          </span>
+                        ) : (
+                          <span>Verify OTP</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {status === "started" && !dropOtpMode && (
+                <motion.button
+                  key="drop"
+                  onClick={() => handleSendDropOtp()}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 active:scale-[0.97]
+                    text-white py-4 rounded-2xl font-bold text-sm tracking-widde
+                    transition-all flex items-center justify-center gap-2"
+                >
+                  <Navigation size={16} /> Mark as Dropped
+                  <ArrowRight size={15} />
+                </motion.button>
+              )}
+
+              {status === "started" && dropOtpMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-zinc-50 border border-zinc-200 rounded-2xl overflow-hidden"
+                >
+                  <div className="bg-zinc-950 px-4 py-3 flex items-center gap-2">
+                    <KeyRound size={14} className="text-amber-400" />
+                    <p className="text-white text-xs font-bold tracking-wide uppercase">
+                      Enter Customer OTP
+                    </p>
+                  </div>
+                  <div className="p-4 spacee-y-3">
+                    <p className="text-xs text-zinc-500">
+                      Ask the cistomer for their 4-digit OTP to complete the
+                      ride
+                    </p>
+                    <div className="flex justify-center">
+                      <input
+                        type="text"
+                        onChange={(e) => {
+                          setDropOtp(e.target.value.replace(/\D/g, ""));
+                          setDropOtpError("");
+                        }}
+                        placeholder=". . . ."
+                        className="w-48 border-2 border-zinc-200 
+                          focus:border-zinc-900 rounded-xl px-4 py-3
+                          text-center text-2xl tracking-[0.5em] font-black
+                          outline-none transition-colors"
+                      />
+                    </div>
+
+                    {dropOtpError && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-500 text-xs text-center font-medium"
+                      >
+                        {dropOtpError}
+                      </motion.p>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          setDropOtpMode(false);
+                          setDropOtp("");
+                          setDropOtpError("");
+                        }}
+                        className="flex-1 border border-zinc-200 bg-white text-zinc-700 py-2.5
+                          rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleVerifyDropOtp}
+                        disabled={loadingDropOtp || dropOtp.length < 4}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800
+                      disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-bold active:scale-[0.97]      
+                      transition-all"
+                      >
+                        {loadingDropOtp ? (
+                          <span className="flex items-center justify-center gap-2">
+                            Verifying...
+                          </span>
+                        ) : (
+                          <span>Verify OTP</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </motion.div>
 
+      {/* Mobile view */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
         <motion.div
           className="bg-white rounded-t-3xl shadow-2xl
@@ -304,8 +619,209 @@ function Page() {
                     </p>
                   </div>
                 )}
+
+                <motion.div
+                  animate={{ rotate: expand ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center"
+                >
+                  <ChevronUp size={14} className="text-zinc-600" />
+                </motion.div>
               </div>
             </div>
+
+            <div className="h-px bg-zinc-100 mx-5" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <PanelContent {...panelProps} />
+          </div>
+
+          <div className="flex-shrink-0 border-t border-zinc-100 bg-white px-5 py-4">
+            <AnimatePresence mode="wait">
+              {status === "confirmed" && !otpMode && !otpVerified && (
+                <motion.button
+                  key="arrived"
+                  onClick={() => handleSendPickupOtp()}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 active:scale-[0.97]
+                    text-white py-4 rounded-2xl font-bold text-sm tracking-widde
+                    transition-all flex items-center justify-center gap-2"
+                >
+                  <MapPin size={16} /> I've Arrived at Pickup
+                  <ArrowRight size={15} />
+                </motion.button>
+              )}
+
+              {status === "confirmed" && otpMode && !otpVerified && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-zinc-50 border border-zinc-200 rounded-2xl overflow-hidden"
+                >
+                  <div className="bg-zinc-950 px-4 py-3 flex items-center gap-2">
+                    <KeyRound size={14} className="text-amber-400" />
+                    <p className="text-white text-xs font-bold tracking-wide uppercase">
+                      Enter Customer OTP
+                    </p>
+                  </div>
+                  <div className="p-4 spacee-y-3">
+                    <p className="text-xs text-zinc-500">
+                      Ask the cistomer for their 4-digit OTP to start the ride
+                    </p>
+                    <div className="flex justify-center">
+                      <input
+                        type="text"
+                        onChange={(e) => {
+                          setOtp(e.target.value.replace(/\D/g, ""));
+                          setOtpError("");
+                        }}
+                        placeholder=". . . ."
+                        className="w-48 border-2 border-zinc-200 
+                          focus:border-zinc-900 rounded-xl px-4 py-3
+                          text-center text-2xl tracking-[0.5em] font-black
+                          outline-none transition-colors"
+                      />
+                    </div>
+
+                    {otpError && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-500 text-xs text-center font-medium"
+                      >
+                        {otpError}
+                      </motion.p>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          setOtpMode(false);
+                          setOtp("");
+                          setOtpError("");
+                        }}
+                        className="flex-1 border border-zinc-200 bg-white text-zinc-700 py-2.5
+                          rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleVerifyPickupOtp}
+                        disabled={loadingOtp || otp.length < 4}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800
+                      disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-bold active:scale-[0.97]      
+                      transition-all"
+                      >
+                        {loadingOtp ? (
+                          <span className="flex items-center justify-center gap-2">
+                            Verifying...
+                          </span>
+                        ) : (
+                          <span>Verify OTP</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {status === "started" && !dropOtpMode && (
+                <motion.button
+                  key="drop"
+                  onClick={() => handleSendDropOtp()}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 active:scale-[0.97]
+                    text-white py-4 rounded-2xl font-bold text-sm tracking-widde
+                    transition-all flex items-center justify-center gap-2"
+                >
+                  <Navigation size={16} /> Mark as Dropped
+                  <ArrowRight size={15} />
+                </motion.button>
+              )}
+
+              {status === "started" && dropOtpMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-zinc-50 border border-zinc-200 rounded-2xl overflow-hidden"
+                >
+                  <div className="bg-zinc-950 px-4 py-3 flex items-center gap-2">
+                    <KeyRound size={14} className="text-amber-400" />
+                    <p className="text-white text-xs font-bold tracking-wide uppercase">
+                      Enter Customer OTP
+                    </p>
+                  </div>
+                  <div className="p-4 spacee-y-3">
+                    <p className="text-xs text-zinc-500">
+                      Ask the cistomer for their 4-digit OTP to complete the
+                      ride
+                    </p>
+                    <div className="flex justify-center">
+                      <input
+                        type="text"
+                        onChange={(e) => {
+                          setDropOtp(e.target.value.replace(/\D/g, ""));
+                          setDropOtpError("");
+                        }}
+                        placeholder=". . . ."
+                        className="w-48 border-2 border-zinc-200 
+                          focus:border-zinc-900 rounded-xl px-4 py-3
+                          text-center text-2xl tracking-[0.5em] font-black
+                          outline-none transition-colors"
+                      />
+                    </div>
+
+                    {dropOtpError && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-500 text-xs text-center font-medium"
+                      >
+                        {dropOtpError}
+                      </motion.p>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          setDropOtpMode(false);
+                          setDropOtp("");
+                          setDropOtpError("");
+                        }}
+                        className="flex-1 border border-zinc-200 bg-white text-zinc-700 py-2.5
+                          rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleVerifyDropOtp}
+                        disabled={loadingDropOtp || dropOtp.length < 4}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800
+                      disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-bold active:scale-[0.97]      
+                      transition-all"
+                      >
+                        {loadingDropOtp ? (
+                          <span className="flex items-center justify-center gap-2">
+                            Verifying...
+                          </span>
+                        ) : (
+                          <span>Verify OTP</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>

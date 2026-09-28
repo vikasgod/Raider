@@ -20,6 +20,7 @@ import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 
 interface IBooking {
+  _id: string;
   user: IUser;
   driver: IUser;
   vehicle: IVehicle;
@@ -184,7 +185,7 @@ function Page() {
 
           {!loading && filteredBookings.length > 0 && (
             <div className="space-y-4">
-              {filteredBookings.map((item, i) => (
+              {filteredBookings.map((item:any, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
@@ -304,7 +305,7 @@ function Page() {
                       {item.bookingStatus !== "completed" && (
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => router.push("/user/active-ride")}
+                            onClick={() => router.push(`/user/ride/${item._id}`)}
                             className="flex items-center gap-1 text-sm
                         font-medium text-blue-600 hover:text-blue-70
                         bg-blue-50 hover:bg-blue-100 px-4 py-1.5
