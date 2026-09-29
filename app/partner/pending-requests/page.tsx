@@ -142,14 +142,14 @@ function Page() {
 
                     <div className="flex gap-4 w-full lg:w-auto">
                       <button
-                        onClick={() => handleReject(booking._id)}
+                        onClick={() => handleReject(booking._id.toString())}
                         className="flex-1 lg:flex-none bg-white hover:bg-gray-200
                        text-gray-700 py-2 px-8 rounded-xl transition-all duration-300 flex items-center justify-center"
                       >
                         Reject
                       </button>
                       <button
-                        onClick={() => handleAccept(booking._id)}
+                        onClick={() => handleAccept(booking._id.toString())}
                         className="flex-1 lg:flex-none bg-black hover:bg-gray-900
                        text-white py-2 px-8 rounded-xl transition-all duration-300 flex items-center justify-center"
                       >

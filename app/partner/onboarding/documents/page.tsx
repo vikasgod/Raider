@@ -181,7 +181,7 @@ function Page() {
       setSelectedPreviewTypes({ ...EMPTY_PREVIEW_TYPES });
 
       setDocs({ ...EMPTY_DOCS_STATE });
-      router.push("/");
+      router.push("/partner/onboarding/bank");
     } catch (error: any) {
       console.error("Document upload error:", error);
       setError(

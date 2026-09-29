@@ -5,10 +5,6 @@ type MongooseCache = {
   promise: Promise<mongoose.Mongoose> | null;
 };
 
-declare global {
-  var mongooseConn: MongooseCache | undefined;
-}
-
 const cached: MongooseCache = global.mongooseConn ?? (global.mongooseConn = { conn: null, promise: null });
 
 export async function connectDB() {

@@ -1,14 +1,19 @@
+import { auth } from "@/app/auth";
 import connectDB from "@/lib/db";
 import Booking from "@/models/booking.modal";
+import User from "@/models/user.model";
 import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
     try {
         await connectDB()
+        const session = await auth()
+        const driver = await User.findOne({ email: session?.user?.email })
 
         const sevenDaysAgo = new Date()
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
         const bookings = await Booking.find({
+            driver: driver._id,
             paymentStatus: "paid",
             createdAt: { $gte: sevenDaysAgo }
         }).select("partnerAmount createdAt")

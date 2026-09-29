@@ -48,11 +48,11 @@ function Page() {
   const [pickUp, setPickUp] = useState("");
   const [drop, setDrop] = useState("");
   const [pickUpCountry, setPickUpCountry] = useState("");
-  const [pickUpLat, setPickUpLat] = useState("");
-  const [pickUpLog, setPickUpLog] = useState("");
+  const [pickUpLat, setPickUpLat] = useState<number | "">("");
+  const [pickUpLog, setPickUpLog] = useState<number | "">("");
   const [dropCountry, setDropCountry] = useState("");
-  const [dorpLat, setDropLat] = useState("");
-  const [dropLog, setDropLog] = useState("");
+  const [dorpLat, setDropLat] = useState<number | "">("");
+  const [dropLog, setDropLog] = useState<number | "">("");
   const [locating, setLocating] = useState(false);
   const [pickUpSuggestions, setPickUpSuggestions] = useState<place[]>([]);
   const [dropSuggestions, setDropSuggestions] = useState<place[]>([]);
@@ -359,8 +359,8 @@ function Page() {
                             onClick={() => {
                               setPickUp(suggestion(p));
                               setPickUpCountry(p.country ?? "");
-                              setPickUpLat(p.lat);
-                              setPickUpLog(p.lng);
+                              setPickUpLat(p?.lat);
+                              setPickUpLog(p?.lng);
                               setPickUpSuggestions([]);
                             }}
                           >

@@ -1,8 +1,23 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import type { IUser } from '@/models/user.model';
 
+type UserData = Pick<
+  IUser,
+  | 'name'
+  | 'email'
+  | 'role'
+  | 'partnerOnboardingSteps'
+  | 'partnerStatus'
+  | 'videoKycStatus'
+  | 'rejectionReason'
+  | 'videoKycRejectionReason'
+  | 'videoKycRoomId'
+> & {
+  _id: string
+}
+
 interface IUserState {
-  userData: IUser | null
+  userData: UserData | null
 }
 
 const initialState: IUserState = {
@@ -13,18 +28,15 @@ export const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    setUserData: (state, action) => {
+    setUserData: (state, action: PayloadAction<UserData | null>) => {
       state.userData = action.payload
     },
-    addUser: (state, action) => {
-      state.userData.push(action.payload)
-    },
     clearUserData: (state) => {
-      state.userData = []
+      state.userData = null
     },
   },
 })
 
-export const { setUserData, addUser, clearUserData } = userSlice.actions
+export const { setUserData, clearUserData } = userSlice.actions
 
 export default userSlice.reducer

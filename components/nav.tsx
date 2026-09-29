@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { Bike, Car, ChevronRight, LogOut, Menu, Truck, X } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { setUserData } from "@/redux/userSlice";
+import { clearUserData } from "@/redux/userSlice";
 import axios from "axios";
 import { getSocket } from "@/lib/soket";
 const Nav_Items = ["Home", "Bookings", "About Us", "Contact"];
@@ -24,7 +24,7 @@ function Nav() {
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const handleLogout = async () => {
     await signOut({ redirect: false });
-    dispatch(setUserData(null));
+    dispatch(clearUserData());
     setProfileOpen(false);
   };
 
@@ -106,26 +106,7 @@ function Nav() {
                   Active Ride
                 </Link>
               </>
-            ) : (
-              Nav_Items.map((item, index) => {
-                let href;
-                if (item == "Home") {
-                  href = "/";
-                } else {
-                  href = `/user/${item.toLowerCase()}`;
-                }
-                const active = href === pathName;
-                return (
-                  <Link
-                    href={href}
-                    key={index}
-                    className={`text-sm font-medium transition ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
-                  >
-                    {item}
-                  </Link>
-                );
-              })
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-3 relative">
             <div className="hidden md:block relative">
@@ -159,6 +140,15 @@ function Nav() {
                           <p className="text-xs uppercase text-gray-500 mb-4">
                             {userData.role}
                           </p>
+                          {userData.role != "partner" && (
+                            <div
+                              onClick={() => router.push("/user/bookings")}
+                              className="w-full flex items-center gap-3 pl-3 pb-3 pt-3 hover:bg-gray-100 rounded-xl"
+                            >
+                              Bookings
+                              <ChevronRight size={14} className="ml-auto" />
+                            </div>
+                          )}
                           {userData.role != "partner" && (
                             <div
                               onClick={() =>
@@ -213,55 +203,9 @@ function Nav() {
                 </>
               )}
             </div>
-            <button
-              className="md:hidden text-white"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              {menuOpen ? <X size={26} /> : <Menu size={26} />}
-            </button>
           </div>
         </div>
       </motion.div>
-      <AnimatePresence>
-        {menuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMenuOpen(false)}
-              className="fixed inset-0 bg-black z-30 md:hidden"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="fixed top-[85px] left-1/2 -translate-x-1/2 w-[92%] bg-black rounded-2xl shadow-2xl z-40 md:hidden overflow-hidden"
-            >
-              <div className="flex flex-col divide-y divide-white/10">
-                {Nav_Items.map((item, index) => {
-                  let href;
-                  if (item == "Home") {
-                    href = "/";
-                  } else {
-                    href = `/user/${item.toLowerCase()}`;
-                  }
-                  return (
-                    <Link
-                      href={href}
-                      key={index}
-                      className="px-6 py-4 text-gray-300 hover:bg-white/10"
-                    >
-                      {item}
-                    </Link>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
       <AnimatePresence>
         {profileOpen && userData && (
           <>
@@ -287,6 +231,15 @@ function Nav() {
                 </p>
                 {userData.role != "partner" && (
                   <div
+                    onClick={() => router.push("/user/bookings")}
+                    className="w-full flex items-center gap-3 pl-3 pb-3 pt-3 hover:bg-gray-100 rounded-xl"
+                  >
+                    Bookings
+                    <ChevronRight size={14} className="ml-auto" />
+                  </div>
+                )}
+                {userData.role != "partner" && (
+                  <div
                     onClick={() => router.push("/partner/onboarding/vehicle")}
                     className="w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl"
                   >
@@ -303,6 +256,37 @@ function Nav() {
                     </div>
                     Become a Partner{" "}
                     <ChevronRight size={14} className="ml-auto" />
+                  </div>
+                )}
+
+                {userData?.role == "partner" && (
+                  <div className="flex flex-col gap-4">
+                    <Link
+                      className="relative text-sm font-medium text-black hover:text-gray-500 transition flex items-center gap-2"
+                      href="/partner/pending-requests"
+                    >
+                      <span>Pending Requests</span>
+                      <span
+                        className="w-5 h-5 
+                  rounded-full bg-black text-white 
+                  text-xs flex items-center 
+                  justify-center font-bold"
+                      >
+                        {pendingRequestCount ?? 0}
+                      </span>
+                    </Link>
+                    <Link
+                      className="relative text-sm font-medium text-black hover:text-gray-500 transition"
+                      href="/partner/bookings"
+                    >
+                      Bookings
+                    </Link>
+                    <Link
+                      className="relative text-sm font-medium text-black hover:text-gray-500 transition"
+                      href="/partner/active-ride"
+                    >
+                      Active Ride
+                    </Link>
                   </div>
                 )}
                 <button

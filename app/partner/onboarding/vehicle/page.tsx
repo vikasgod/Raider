@@ -38,9 +38,8 @@ function page() {
       if (data.status != 200) {
         setError(data.message);
       }
-      router.push("/");
-
       setLoading(false);
+      router.push("/partner/onboarding/documents");
     } catch (error: any) {
       setError(error?.response.data.message ?? "somthing went wrong");
       setLoading(false);

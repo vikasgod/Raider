@@ -104,7 +104,7 @@ const PAYMENT_BADGE: Record<PaymentStatus, { label: string; cls: string }> = {
 };
 
 function Page() {
-  const [bookings, setBookings] = useState<IBooking>();
+  const [bookings, setBookings] = useState<IBooking | null>(null);
   const [loading, setLoading] = useState(false);
   const [driverPos, setDriverPos] = useState<[number, number] | null>(null);
   const [pickUpPos, setPickUpPos] = useState<[number, number] | null>(null);
@@ -168,7 +168,7 @@ function Page() {
       setOtpVerified(true);
       setLoadingOtp(false);
       setOtpMode(false);
-      setStatus("started"); 
+      setStatus("started");
       setBookings((prev) =>
         prev ? { ...prev, bookingStatus: "started" } : prev,
       );
@@ -187,7 +187,7 @@ function Page() {
         "/api/partner/bookings/otp/drop/verify",
         {
           bookingId: bookings?._id,
-          otp:dropOtp,
+          otp: dropOtp,
         },
       );
       setLoadingDropOtp(false);
@@ -208,6 +208,12 @@ function Page() {
       setLoading(true);
       try {
         const { data } = await axios.get("/api/partner/my-active");
+
+        if (!data) {
+          setLoading(false);
+          setBookings(null);
+          return;
+        }
         setBookings(data);
         setStatus(data.bookingStatus);
         setPickUpPos([
@@ -288,11 +294,19 @@ function Page() {
     );
   }
 
-
-  if(status === "completed" && bookings ){
+  if (!bookings) {
     return (
-      <CompletedScreen booking={bookings} role="driver" />
-    )
+      <div
+        className="h-screen w-full bg-black flex items-center justify-center
+    text-[20px] text-white"
+      >
+        No Active Ride Found
+      </div>
+    );
+  }
+
+  if (status === "completed" && bookings) {
+    return <CompletedScreen booking={bookings} role="driver" />;
   }
 
   const cgf = STATUS_LABEL[bookings?.bookingStatus! ?? "confirmed"];

@@ -59,7 +59,7 @@ function Page() {
         mobileNumber: bankForm.mobileNumber.trim(),
       });
       setLoading(false);
-      router.push("/");
+      window.location.href = "/"
     } catch (err: any) {
       const message =
         err?.response?.data?.message || err?.message || "Something went wrong";
