@@ -245,7 +245,7 @@ function Nav() {
                   if (item == "Home") {
                     href = "/";
                   } else {
-                    href = `/${item.toLowerCase()}`;
+                    href = `/user/${item.toLowerCase()}`;
                   }
                   return (
                     <Link
